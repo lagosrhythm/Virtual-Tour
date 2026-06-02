@@ -6,16 +6,13 @@
       "destination": "/api/index.js"
     },
     {
-      "source": "/admin/(.*)",
+      "source": "/admin/(login|register|me|streams|tours|catalog|recommended-tours|analytics|logs|tour-requests|newsletter)(.*)",
       "destination": "/api/index.js"
     },
     {
-      "source": "/assets/(.*)",
-      "destination": "/dist/assets/$1"
-    },
-    {
       "source": "/(.*)",
-      "destination": "/dist/index.html"
+      "destination": "/index.html"
     }
-  ]
+  ],
+  "cleanUrls": true
 }

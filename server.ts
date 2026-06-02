@@ -865,15 +865,19 @@ setInterval(() => {
   }
 }, 30_000).unref();
 
-app.listen(PORT, '0.0.0.0', async () => {
-  console.log(`Lagos Rhythm listening on http://localhost:${PORT}`);
+const isVercel = process.env.VERCEL === '1';
 
-  // Initialize Firestore data (seeds recommended tours if empty)
-  try {
-    await initializeFirestoreData();
-  } catch (error) {
-    console.warn('Failed to initialize Firestore data:', error instanceof Error ? error.message : error);
-  }
-});
+if (!isVercel) {
+  app.listen(port, '0.0.0.0', async () => {
+    console.log(`Lagos Rhythm listening on http://localhost:${port}`);
+
+    // Initialize Database data (seeds recommended tours if empty)
+    try {
+      await initializeFirestoreData();
+    } catch (error) {
+      console.warn('Failed to initialize Database data:', error instanceof Error ? error.message : error);
+    }
+  });
+}
 
 export default app;

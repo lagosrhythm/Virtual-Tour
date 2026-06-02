@@ -6,10 +6,10 @@
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "dev:api": "tsx server.ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --packages=external --format=esm --outfile=api/index.js",
-    "start": "node server.js",
+    "build": "npm run clean && vite build && esbuild server.ts --bundle --platform=node --packages=external --format=esm --outfile=api/index.js",
+    "start": "node api/index.js",
     "preview": "vite preview",
-    "clean": "node -e \"const fs=require('node:fs');fs.rmSync('dist',{recursive:true,force:true});fs.rmSync('server.js',{force:true})\"",
+    "clean": "node -e \"const fs=require('node:fs');['dist','api','server.js'].forEach(p=>fs.rmSync(p,{recursive:true,force:true}))\"",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

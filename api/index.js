@@ -1262,14 +1262,17 @@ setInterval(() => {
     });
   }
 }, 3e4).unref();
-app.listen(PORT, "0.0.0.0", async () => {
-  console.log(`Lagos Rhythm listening on http://localhost:${PORT}`);
-  try {
-    await initializeFirestoreData();
-  } catch (error) {
-    console.warn("Failed to initialize Firestore data:", error instanceof Error ? error.message : error);
-  }
-});
+var isVercel = process.env.VERCEL === "1";
+if (!isVercel) {
+  app.listen(port, "0.0.0.0", async () => {
+    console.log(`Lagos Rhythm listening on http://localhost:${port}`);
+    try {
+      await initializeFirestoreData();
+    } catch (error) {
+      console.warn("Failed to initialize Database data:", error instanceof Error ? error.message : error);
+    }
+  });
+}
 var server_default = app;
 export {
   server_default as default
