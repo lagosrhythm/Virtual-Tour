@@ -148,7 +148,7 @@ export default function BecomeHostModal({ isOpen, onClose }: BecomeHostModalProp
                 {step === 3 && (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="text-center py-8">
                     <div className="w-20 h-20 rounded-full bg-teal/10 flex items-center justify-center mx-auto mb-6 text-4xl">
-                      🎉
+                      OK
                     </div>
                     <h4 className="text-2xl font-bold font-display mb-2">Application Received!</h4>
                     <p className="text-sm text-gray-500 mb-8 max-w-xs mx-auto">

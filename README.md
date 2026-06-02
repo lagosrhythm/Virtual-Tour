@@ -1,62 +1,97 @@
-# Lagos Rhythm 🌍
+# Lagos Rhythm
 
-An immersive virtual tour platform designed to showcase the beauty, culture, and rhythm of Lagos, Nigeria. This application allows users to explore iconic destinations through high-quality virtual experiences and participate in live guided tours.
+An immersive virtual tour platform for exploring Lagos, Nigeria through live guided experiences, recommended tours, and request-driven programming.
 
-## ✨ Features
+## Features
 
-- **Live Guided Tours**: Real-time virtual experiences with interactive chat and live host overlays.
-- **Vibrant Hero Experience**: Immersive introduction to featured tours with smooth animations using `motion`.
-- **Dynamic Catalog**: Filterable and searchable collection of tours across various categories (Culture, Nature, History, etc.).
-- **Interactive Chat**: Real-time feel chat interface with pinned host messages.
-- **Newsletter Integration**: Clean subscription flow for users to stay updated on new journeys.
-- **Become a Host**: Multi-step onboarding flow for local guides to join the platform.
-- **Responsive Design**: Fully optimized for desktop, tablet, and mobile devices using Tailwind CSS.
+- Live tour page with offline and active broadcast states.
+- WebSocket-backed live status and viewer count updates at `/api/live`.
+- API-backed recommended tours at `/api/recommended-tours`.
+- Request-a-tour and newsletter submission endpoints.
+- Searchable catalog of virtual Lagos experiences.
+- Responsive React and Tailwind CSS interface.
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-- **Framework**: [React 19](https://react.dev/)
-- **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
-- **Animations**: [Motion](https://motion.dev/)
-- **Icons**: [Lucide React](https://lucide.dev/)
-- **Build Tool**: [Vite](https://vitejs.dev/)
-- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- React 19
+- TypeScript
+- Tailwind CSS 4
+- Vite
+- Express
+- Motion
+- Lucide React
 
-## 📂 Project Structure
+## Project Structure
 
 ```text
 src/
-├── components/          # Reusable UI components
-│   ├── BecomeHostModal  # Onboarding flow modal
-│   ├── Catalog          # Searchable tour library
-│   ├── Hero             # Engaging landing section
-│   ├── LiveTour         # The core virtual tour experience
-│   └── ...
-├── lib/                 # Utility functions (cn helper, etc.)
-├── constants.ts         # Application data and configuration
-├── types.ts             # TypeScript interfaces and types
-├── App.tsx              # Main layout and routing logic
-└── index.css            # Global styles and Tailwind configuration
+  components/          Reusable UI components
+  data/                Shared seed data used by client and server
+  hooks/               Client state and API hooks
+  lib/                 API client and utility helpers
+  constants.ts         Catalog and chat data
+  types.ts             Shared TypeScript types
+server.ts             Express API, static server, and WebSocket gateway
 ```
 
-## 🚀 Getting Started
+## Development
 
-1. **Install Dependencies**:
+```bash
+npm install
+npm run dev
+```
 
-   ```bash
-   npm install
-   ```
+To run the local API/static server directly during integration work:
 
-2. **Run Development Server**:
+```bash
+npm run dev:api
+```
 
-   ```bash
-   npm run dev
-   ```
+The Vite dev server also provides lightweight `/api/*` middleware for local UI work, so `npm run dev` can load recommended tours and submit forms without returning the HTML app shell.
 
-3. **Build for Production**:
-   ```bash
-   npm run build .
-   ```
+## Production
 
-## 📄 License
+```bash
+npm run build
+npm run start
+```
 
-This project is licensed under the Apache-2.0 License.
+The production build creates:
+
+- `dist/` for the client app.
+- `server.js` for the Express API and static server.
+
+## Environment
+
+Copy `.env.example` and configure the live tour settings for your deployment.
+
+Key settings:
+
+- `PORT`: production server port.
+- `LIVE_TOUR_ACTIVE`: set to `true` when a tour is broadcasting.
+- `LIVE_TOUR_VIEWERS`: baseline viewer count.
+- `LIVE_TOUR_TITLE`, `LIVE_TOUR_DESCRIPTION`, `LIVE_TOUR_HOST`: active tour metadata.
+- `VITE_TOUR_STATUS_WS_URL`: optional external WebSocket gateway. If omitted, the frontend uses `/api/live`.
+
+## API
+
+- `GET /api/health`
+- `GET /api/recommended-tours`
+- `GET /api/tour-status`
+- `POST /api/tour-requests`
+- `POST /api/newsletter`
+- `WS /api/live`
+
+Request bodies:
+
+```json
+{ "destination": "Food markets", "email": "you@example.com" }
+```
+
+```json
+{ "email": "you@example.com" }
+```
+
+## License
+
+Apache-2.0

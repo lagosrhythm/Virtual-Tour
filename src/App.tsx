@@ -6,15 +6,22 @@ import Newsletter from './components/Newsletter';
 import LiveTour from './components/LiveTour';
 import Catalog from './components/Catalog';
 import Footer from './components/Footer';
-import BecomeHostModal from './components/BecomeHostModal';
 import WelcomeModal from './components/WelcomeModal';
+import RequestTourModal from './components/RequestTourModal';
+import AdminDashboard from './components/admin/AdminDashboard';
+import { useTourStatus } from './hooks/useTourStatus';
+import { cn } from './lib/utils';
+
+const isAdminRoute = window.location.pathname.startsWith('/admin');
 
 export default function App() {
-  const [isBecomeHostOpen, setIsBecomeHostOpen] = useState(false);
+  const [isRequestTourOpen, setIsRequestTourOpen] = useState(false);
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
   const [currentView, setCurrentView] = useState<'home' | 'live'>('home');
+  const tourStatus = useTourStatus();
 
   useEffect(() => {
+    if (isAdminRoute) return;
     const hasSeenWelcome = sessionStorage.getItem('hasSeenWelcome');
     if (!hasSeenWelcome) {
       const timer = setTimeout(() => {
@@ -25,47 +32,56 @@ export default function App() {
     }
   }, []);
 
+// Admin route — render admin dashboard without public chrome
+  if (isAdminRoute) return <AdminDashboard />;
+
   const navigateTo = (view: 'home' | 'live') => {
     setCurrentView(view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const navigateToCatalog = () => {
+    setCurrentView('home');
+    window.setTimeout(() => {
+      document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' });
+    }, 0);
+  };
+
   return (
     <div className="min-h-screen bg-white selection:bg-coral/20 selection:text-coral font-sans">
-      <Navbar 
-        onBecomeHost={() => setIsBecomeHostOpen(true)} 
+      <Navbar
         onLogoClick={() => navigateTo('home')}
         onLiveClick={() => navigateTo('live')}
+        onCatalogClick={navigateToCatalog}
+        onRequestTour={() => setIsRequestTourOpen(true)}
+        isLive={tourStatus.isLive}
       />
-      
-      {/* Spacer for fixed navbar: top banner + navbar height */}
-      <div className="pt-[96px] md:pt-[101px]">
+
+      <div className={cn(tourStatus.isLive ? 'pt-[96px] md:pt-[101px]' : 'pt-[64px] md:pt-[69px]')}>
         <main>
           {currentView === 'home' ? (
             <>
-              <Hero 
-                onWatch={() => navigateTo('live')} 
-              />
+              <Hero onWatch={() => navigateTo('live')} />
               <Newsletter />
               <RecommendationSection />
               <Catalog />
             </>
           ) : (
-            <LiveTour />
+            <LiveTour status={tourStatus} />
           )}
         </main>
       </div>
 
       <Footer />
 
-      <BecomeHostModal 
-        isOpen={isBecomeHostOpen} 
-        onClose={() => setIsBecomeHostOpen(false)} 
+      <RequestTourModal
+        isOpen={isRequestTourOpen}
+        onClose={() => setIsRequestTourOpen(false)}
       />
 
-      <WelcomeModal 
-        isOpen={isWelcomeModalOpen} 
-        onClose={() => setIsWelcomeModalOpen(false)} 
+      <WelcomeModal
+        isOpen={isWelcomeModalOpen}
+        onClose={() => setIsWelcomeModalOpen(false)}
       />
     </div>
   );

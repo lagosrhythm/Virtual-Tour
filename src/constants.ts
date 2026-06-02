@@ -15,11 +15,11 @@ export const CATS: TourCategory[] = ["All", "Culture", "Nature", "History", "Ent
 
 export const CHAT: ChatMessage[] = [
   { user: "Host (Lagos Rhythm)", msg: "Welcome everyone! We are about to begin our journey through the Lekki Conservation Centre. Feel free to ask questions here!", pinned: true, time: "10:02" },
-  { user: "Amina", msg: "So excited for this tour! 😍", time: "10:02" },
+  { user: "Amina", msg: "So excited for this tour!", time: "10:02" },
   { user: "David_K", msg: "I visited there last year, absolutely beautiful.", time: "10:03" },
   { user: "Sarah", msg: "Is the canopy walk open today?", time: "10:04" },
   { user: "TravelBug", msg: "Can't wait to see the monkeys!", time: "10:05" },
-  { user: "Ngozi", msg: "Beautiful morning in Lagos! 🌟", time: "10:05" },
+  { user: "Ngozi", msg: "Beautiful morning in Lagos!", time: "10:05" },
 ];
 
 export const CATEGORY_STYLES: Record<string, string> = {

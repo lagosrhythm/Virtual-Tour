@@ -1,6 +1,7 @@
 import { X, Mail, Globe2, Instagram, Twitter, Facebook, Youtube, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useState, useEffect, FormEvent } from 'react';
+import { subscribeToNewsletter } from '../lib/api';
 import { cn } from '../lib/utils';
 
 interface WelcomeModalProps {
@@ -11,17 +12,23 @@ interface WelcomeModalProps {
 export default function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<'idle' | 'subscribing' | 'success'>('idle');
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubscribe = (e: FormEvent) => {
+  const handleSubscribe = async (e: FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
     
     setStatus('subscribing');
-    // Simulate API call
-    setTimeout(() => {
+    setError(null);
+
+    try {
+      await subscribeToNewsletter({ email });
       setStatus('success');
       setTimeout(onClose, 2000);
-    }, 1200);
+    } catch (err) {
+      setStatus('idle');
+      setError(err instanceof Error ? err.message : 'Could not subscribe right now. Please try again.');
+    }
   };
 
   return (
@@ -88,6 +95,7 @@ export default function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="your@email.com"
+                    autoComplete="email"
                     className="flex-1 px-4 py-3 text-dark text-sm outline-none bg-transparent placeholder:text-gray-400"
                     disabled={status !== 'idle'}
                   />
@@ -107,6 +115,12 @@ export default function WelcomeModal({ isOpen, onClose }: WelcomeModalProps) {
                     {status === 'success' && <Check className="w-5 h-5" />}
                   </button>
                 </div>
+
+                {error && (
+                  <p className="rounded-xl border border-coral/20 bg-coral/5 px-4 py-3 text-sm font-medium text-coral">
+                    {error}
+                  </p>
+                )}
                 
                 <p className="text-xs text-center text-gray-400 font-medium">
                   Join 50,000+ explorers discovering new places weekly.

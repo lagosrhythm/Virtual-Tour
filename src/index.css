@@ -29,3 +29,15 @@
     display: none;
   }
 }
+
+@media (min-width: 1024px) {
+  .newsletter-section {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+  }
+
+  .newsletter-panel {
+    gap: 2rem;
+    padding: 2.75rem 3.5rem;
+  }
+}

@@ -1,23 +1,33 @@
 import { useState, FormEvent } from 'react';
 import { Mail, Check, Globe, Instagram, Twitter, Facebook, Youtube } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { subscribeToNewsletter } from '../lib/api';
 import { cn } from '../lib/utils';
 
 export default function Newsletter() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<'idle' | 'subscribing' | 'success'>('idle');
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!email.trim() || status !== 'idle') return;
     
     setStatus('subscribing');
-    setTimeout(() => setStatus('success'), 1200);
+    setError(null);
+
+    try {
+      await subscribeToNewsletter({ email });
+      setStatus('success');
+    } catch (err) {
+      setStatus('idle');
+      setError(err instanceof Error ? err.message : 'Could not subscribe right now. Please try again.');
+    }
   };
 
   return (
-    <section className="px-4 md:px-8 py-12 max-w-[1440px] mx-auto">
-      <div className="bg-coral/5 border border-coral/20 rounded-[2.5rem] p-8 md:p-14 lg:p-20 flex flex-col lg:flex-row items-center justify-between gap-12 relative overflow-hidden shadow-sm">
+    <section className="newsletter-section px-4 md:px-8 py-12 max-w-[1440px] mx-auto">
+      <div className="newsletter-panel bg-coral/5 border border-coral/20 rounded-[2.5rem] p-8 md:p-14 lg:p-20 flex flex-col lg:flex-row items-center justify-between gap-12 relative overflow-hidden shadow-sm">
         {/* Background Globe Icon */}
         <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none -translate-y-1/4 translate-x-1/4">
           <Globe className="size-[400px] text-coral" strokeWidth={1} />
@@ -44,6 +54,7 @@ export default function Newsletter() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
+                autoComplete="email"
                 className="w-full bg-transparent outline-none text-dark text-base font-medium placeholder:text-gray-300"
                 disabled={status === 'success'}
               />
@@ -62,6 +73,12 @@ export default function Newsletter() {
               {status === 'success' && <Check className="size-5 mx-auto" />}
             </button>
           </form>
+
+          {error && (
+            <p className="rounded-xl border border-coral/20 bg-white px-4 py-3 text-sm font-medium text-coral shadow-sm">
+              {error}
+            </p>
+          )}
 
           <div className="flex items-center justify-center lg:justify-start gap-4">
             <span className="text-sm font-bold text-muted-foreground mr-2 tracking-wide uppercase text-[10px]">Follow us:</span>

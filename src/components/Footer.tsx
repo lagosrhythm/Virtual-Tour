@@ -20,7 +20,7 @@ export default function Footer() {
         </div>
 
         <p className="text-muted-foreground text-sm font-medium">
-          © 2024 Lagos Rhythm. All rights reserved.
+          (c) 2024 Lagos Rhythm. All rights reserved.
         </p>
       </div>
     </footer>
