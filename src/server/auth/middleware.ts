@@ -1,6 +1,6 @@
-import * as admin from 'firebase-admin';
+import { getAuth } from 'firebase-admin/auth';
 import { Request, Response, NextFunction } from 'express';
-import { getUserById, isAdmin, isHostOrAdmin } from './users';
+import { getUserById } from './users';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -28,9 +28,9 @@ export async function verifyFirebaseToken(
 
   try {
     const token = authHeader.substring(7);
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await getAuth().verifyIdToken(token);
 
-    // Get user from Firestore to include role
+    // Get user from RTDB to include role
     const user = await getUserById(decodedToken.uid);
 
     if (!user) {

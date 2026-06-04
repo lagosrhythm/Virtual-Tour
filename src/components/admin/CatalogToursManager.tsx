@@ -26,7 +26,7 @@ const EMPTY_FORM: FormState = {
 };
 
 export default function CatalogToursManager() {
-  const { token } = useAdminAuth();
+  const { passcode } = useAdminAuth();
   const [tours, setTours] = useState<CatalogTourApi[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -38,9 +38,9 @@ export default function CatalogToursManager() {
   const [filterVis, setFilterVis] = useState<CatalogTourApi['visibility'] | 'all'>('all');
 
   async function load() {
-    if (!token) return;
+    if (!passcode) return;
     try {
-      const res = await adminGetCatalogTours(token);
+      const res = await adminGetCatalogTours(passcode);
       setTours(res.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load');
@@ -49,7 +49,7 @@ export default function CatalogToursManager() {
     }
   }
 
-  useEffect(() => { void load(); }, [token]);
+  useEffect(() => { void load(); }, [passcode]);
 
   function openCreate() {
     setEditingId(null);
@@ -70,15 +70,15 @@ export default function CatalogToursManager() {
   }
 
   async function handleSave() {
-    if (!token) return;
+    if (!passcode) return;
     if (!form.title.trim()) { setFormError('Title is required.'); return; }
     setSaving(true);
     setFormError('');
     try {
       if (editingId) {
-        await adminUpdateCatalogTour(token, editingId, form);
+        await adminUpdateCatalogTour(passcode, editingId, form);
       } else {
-        await adminCreateCatalogTour(token, form);
+        await adminCreateCatalogTour(passcode, form);
       }
       setShowForm(false);
       await load();
@@ -90,9 +90,9 @@ export default function CatalogToursManager() {
   }
 
   async function handleDelete(id: string) {
-    if (!token || !confirm('Delete this tour?')) return;
+    if (!passcode || !confirm('Delete this tour?')) return;
     try {
-      await adminDeleteCatalogTour(token, id);
+      await adminDeleteCatalogTour(passcode, id);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Delete failed');
@@ -100,10 +100,10 @@ export default function CatalogToursManager() {
   }
 
   async function toggleVisibility(t: CatalogTourApi) {
-    if (!token) return;
+    if (!passcode) return;
     const next: CatalogTourApi['visibility'] = t.visibility === 'public' ? 'draft' : 'public';
     try {
-      await adminUpdateCatalogTour(token, t.id, { visibility: next });
+      await adminUpdateCatalogTour(passcode, t.id, { visibility: next });
       setTours(prev => prev.map(x => x.id === t.id ? { ...x, visibility: next } : x));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Update failed');

@@ -23,9 +23,9 @@ const NAV_ITEMS: { id: AdminView; label: string; icon: typeof LayoutDashboard }[
 ];
 
 export default function AdminLayout({ children, currentView, onNavigate }: AdminLayoutProps) {
-  const { user, logout, token } = useAdminAuth();
+  const { passcode, logout } = useAdminAuth();
 
-  if (!token || !user) return <AdminLogin />;
+  if (!passcode) return <AdminLogin />;
 
   return (
     <div className="min-h-screen bg-muted flex">
@@ -60,10 +60,6 @@ export default function AdminLayout({ children, currentView, onNavigate }: Admin
         </nav>
 
         <div className="p-3 border-t border-border">
-          <div className="px-3 py-2 mb-1">
-            <p className="text-xs font-bold text-dark truncate">{user.email}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">{user.role}</p>
-          </div>
           <button
             onClick={logout}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-dark hover:bg-muted transition-colors"

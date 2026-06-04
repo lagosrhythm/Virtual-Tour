@@ -65,7 +65,6 @@ export async function seedCatalogTours(): Promise<void> {
 
 export async function initializeFirestoreData(): Promise<void> {
   try {
-    // Note: Function name kept as initializeFirestoreData to avoid breaking server.ts imports
     await seedRecommendedTours();
     await seedCatalogTours();
     console.log('✓ Realtime Database initialization complete');

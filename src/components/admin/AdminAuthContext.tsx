@@ -1,43 +1,44 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { AdminUser } from '../../lib/api';
+import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
 
 interface AdminAuthState {
-  token: string | null;
-  user: AdminUser | null;
-  login: (token: string, user: AdminUser) => void;
+  passcode: string | null;
+  isAuthenticated: boolean;
+  login: (passcode: string) => void;
   logout: () => void;
 }
 
 const AdminAuthContext = createContext<AdminAuthState>({
-  token: null,
-  user: null,
+  passcode: null,
+  isAuthenticated: false,
   login: () => {},
   logout: () => {},
 });
 
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(() => sessionStorage.getItem('admin_token'));
-  const [user, setUser] = useState<AdminUser | null>(() => {
-    const raw = sessionStorage.getItem('admin_user');
-    return raw ? (JSON.parse(raw) as AdminUser) : null;
+  // Initialize passcode from session storage
+  const [passcode, setPasscode] = useState<string | null>(() => {
+    const stored = sessionStorage.getItem('admin_passcode');
+    // Debug: log what we're reading from session storage
+    // console.debug('AdminAuthProvider: Reading passcode from session storage:', stored ? '[SET]' : '[NULL]');
+    return stored;
   });
 
-  const login = useCallback((t: string, u: AdminUser) => {
-    sessionStorage.setItem('admin_token', t);
-    sessionStorage.setItem('admin_user', JSON.stringify(u));
-    setToken(t);
-    setUser(u);
+  const login = useCallback((p: string) => {
+    sessionStorage.setItem('admin_passcode', p);
+    setPasscode(p);
+    // Debug: log login event
+    // console.debug('AdminAuthProvider: Login successful, passcode stored in session storage');
   }, []);
 
   const logout = useCallback(() => {
-    sessionStorage.removeItem('admin_token');
-    sessionStorage.removeItem('admin_user');
-    setToken(null);
-    setUser(null);
+    sessionStorage.removeItem('admin_passcode');
+    setPasscode(null);
+    // Debug: log logout event
+    // console.debug('AdminAuthProvider: Logout successful, passcode removed from session storage');
   }, []);
 
   return (
-    <AdminAuthContext.Provider value={{ token, user, login, logout }}>
+    <AdminAuthContext.Provider value={{ passcode, isAuthenticated: !!passcode, login, logout }}>
       {children}
     </AdminAuthContext.Provider>
   );

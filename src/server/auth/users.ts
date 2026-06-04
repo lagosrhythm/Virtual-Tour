@@ -1,4 +1,4 @@
-import { getFirestore, COLLECTIONS } from '../db/firestore';
+import { getRealtimeDB, COLLECTIONS } from '../db/firestore';
 import type { User } from '../db/types';
 
 // Roles
@@ -13,7 +13,7 @@ export interface TokenPayload {
 }
 
 /**
- * Create or update a user in Firestore
+ * Create or update a user in RTDB
  */
 export async function upsertUser(
   uid: string,
@@ -21,7 +21,7 @@ export async function upsertUser(
   role: UserRole = 'viewer',
   displayName?: string,
 ): Promise<User> {
-  const db = getFirestore();
+  const db = getRealtimeDB();
   const now = new Date();
 
   const user: User = {
@@ -32,7 +32,10 @@ export async function upsertUser(
     createdAt: now,
   };
 
-  await db.collection(COLLECTIONS.users).doc(uid).set(user, { merge: true });
+  await db.ref(COLLECTIONS.users).child(uid).set({
+    ...user,
+    createdAt: now.toISOString(),
+  });
   return user;
 }
 
@@ -40,40 +43,51 @@ export async function upsertUser(
  * Get user by ID
  */
 export async function getUserById(uid: string): Promise<User | null> {
-  const db = getFirestore();
-  const doc = await db.collection(COLLECTIONS.users).doc(uid).get();
+  const db = getRealtimeDB();
+  const snapshot = await db.ref(COLLECTIONS.users).child(uid).get();
 
-  if (!doc.exists) {
+  if (!snapshot.exists()) {
     return null;
   }
 
-  return doc.data() as User;
+  const data = snapshot.val();
+  return {
+    ...data,
+    createdAt: data.createdAt ? new Date(data.createdAt) : undefined,
+  };
 }
 
 /**
  * Get user by email
  */
 export async function getUserByEmail(email: string): Promise<User | null> {
-  const db = getFirestore();
-  const query = await db
-    .collection(COLLECTIONS.users)
-    .where('email', '==', email.toLowerCase())
-    .limit(1)
+  const db = getRealtimeDB();
+  const snapshot = await db.ref(COLLECTIONS.users)
+    .orderByChild('email')
+    .equalTo(email.toLowerCase())
+    .limitToFirst(1)
     .get();
 
-  if (query.empty) {
+  if (!snapshot.exists()) {
     return null;
   }
 
-  return query.docs[0].data() as User;
+  const val = snapshot.val();
+  const uid = Object.keys(val)[0];
+  const data = val[uid];
+
+  return {
+    ...data,
+    createdAt: data.createdAt ? new Date(data.createdAt) : undefined,
+  };
 }
 
 /**
  * Update user role
  */
 export async function updateUserRole(uid: string, role: UserRole): Promise<void> {
-  const db = getFirestore();
-  await db.collection(COLLECTIONS.users).doc(uid).update({ role });
+  const db = getRealtimeDB();
+  await db.ref(COLLECTIONS.users).child(uid).update({ role });
 }
 
 /**
@@ -96,11 +110,17 @@ export async function isHostOrAdmin(uid: string): Promise<boolean> {
  * Get all admins (for setup/verification)
  */
 export async function getAllAdmins(): Promise<User[]> {
-  const db = getFirestore();
-  const query = await db
-    .collection(COLLECTIONS.users)
-    .where('role', '==', 'admin')
+  const db = getRealtimeDB();
+  const snapshot = await db.ref(COLLECTIONS.users)
+    .orderByChild('role')
+    .equalTo('admin')
     .get();
 
-  return query.docs.map((doc) => doc.data() as User);
+  if (!snapshot.exists()) return [];
+
+  const val = snapshot.val();
+  return Object.keys(val).map(uid => ({
+    ...val[uid],
+    createdAt: val[uid].createdAt ? new Date(val[uid].createdAt) : undefined,
+  }));
 }

@@ -9,7 +9,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { OFFLINE_TOUR_STATUS, type TourStatusSnapshot } from './src/data/liveTour';
 import { RECOMMENDED_TOURS } from './src/data/recommendedTours';
-import { initializeFirebase, getFirestore } from './src/server/db/firestore';
+import { initializeFirebase, getRealtimeDB, COLLECTIONS } from './src/server/db/firestore';
 import {
   createTourRequest,
   addNewsletterSubscriber,
@@ -24,14 +24,15 @@ import {
   createLiveTour,
   getLiveTourHistory,
   getCatalogTours,
+  createCatalogTour,
+  updateCatalogTour,
+  deleteCatalogTour,
   writeOperationLog,
   getOperationLogs,
   writeViewerSnapshot,
   getAnalyticsSummary,
 } from './src/server/db/services';
 import { initializeFirestoreData } from './src/server/db/seed';
-import { verifyFirebaseToken, requireAdmin, requireAuth, type AuthRequest } from './src/server/auth/middleware';
-import { upsertUser, getUserById, getAllAdmins } from './src/server/auth/users';
 import type { StreamProvider, LiveTour } from './src/server/db/types';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -49,7 +50,7 @@ let currentLiveTourId: string | null = null;
 const sockets = new Set<Duplex>();
 
 app.use(helmet({
-  contentSecurityPolicy: {
+  contentSecurityPolicy: process.env.VERCEL ? {
     useDefaults: true,
     directives: {
       "default-src": ["'self'"],
@@ -60,9 +61,24 @@ app.use(helmet({
       "frame-src": ["'self'", "https://www.youtube.com", "https://youtube.com"],
       "connect-src": ["'self'", "*.googleapis.com", "wss:", "ws:"],
     },
-  },
+  } : false,
 }));
 app.use(express.json({ limit: '32kb' }));
+
+// CORS for local dev (frontend on any localhost port → API on :3001)
+if (!process.env.VERCEL) {
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Vary', 'Origin');
+    }
+    res.header('Access-Control-Allow-Headers', 'X-Admin-Passcode, Content-Type');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    if (req.method === 'OPTIONS') { res.sendStatus(204); return; }
+    next();
+  });
+}
 
 // Rate limiters for public write endpoints
 const publicFormLimiter = rateLimit({
@@ -73,8 +89,17 @@ const publicFormLimiter = rateLimit({
   message: { error: 'Too many requests. Please try again later.' },
 });
 
-// Apply authentication middleware globally (parses tokens but does not require them)
-app.use(verifyFirebaseToken);
+// Admin passcode middleware — all /admin routes use this
+const ADMIN_PASSCODE = process.env.VITE_ADMIN_PASSCODE || '';
+
+function requireAdminPasscode(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const passcode = req.headers['x-admin-passcode'];
+  if (!passcode || passcode !== ADMIN_PASSCODE) {
+    res.status(401).json({ error: 'Invalid or missing admin passcode.' });
+    return;
+  }
+  next();
+}
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', environment: process.env.VERCEL ? 'vercel' : 'local', timestamp: new Date().toISOString() });
@@ -163,106 +188,6 @@ app.get('/api/health', (_req, res) => {
   res.json(jsonOk({ ok: true }));
 });
 
-// ============ Admin Auth Endpoints ============
-
-/**
- * POST /admin/login
- * Public endpoint for admin login with Firebase Auth token
- * Request body: { token: string } (Firebase ID token)
- * Response: { data: { uid, email, role } }
- */
-app.post('/admin/login', async (req: AuthRequest, res) => {
-  try {
-    const token = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
-
-    if (!token) {
-      res.status(400).json({ error: 'Firebase ID token is required.' });
-      return;
-    }
-
-    // Verify the token (this is already done by middleware if it succeeds)
-    // The middleware sets req.user if the token is valid
-    if (!req.user) {
-      res.status(401).json({ error: 'Invalid or expired token.' });
-      return;
-    }
-
-    // Ensure user exists in Firestore
-    const user = await getUserById(req.user.uid);
-    if (!user) {
-      res.status(404).json({ error: 'User not found. Contact admin to set up account.' });
-      return;
-    }
-
-    res.json(jsonOk({ uid: user.id, email: user.email, role: user.role }));
-  } catch (error) {
-    console.error('Error in /admin/login:', error);
-    res.status(500).json({ error: 'Login failed' });
-  }
-});
-
-/**
- * POST /admin/register
- * Register first admin user (only works if no admins exist)
- * Request body: { token: string } (Firebase ID token)
- * Response: { data: { uid, email, role } }
- */
-app.post('/admin/register', async (req: AuthRequest, res) => {
-  try {
-    const token = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
-
-    if (!token) {
-      res.status(400).json({ error: 'Firebase ID token is required.' });
-      return;
-    }
-
-    if (!req.user) {
-      res.status(401).json({ error: 'Invalid or expired token.' });
-      return;
-    }
-
-    // Check if any admins exist
-    const existingAdmins = await getAllAdmins();
-    if (existingAdmins.length > 0) {
-      res.status(403).json({ error: 'Admin registration has already been completed.' });
-      return;
-    }
-
-    // Create new admin user
-    const user = await upsertUser(req.user.uid, req.user.email, 'admin');
-
-    res.status(201).json(jsonOk({ uid: user.id, email: user.email, role: user.role }));
-  } catch (error) {
-    console.error('Error in /admin/register:', error);
-    res.status(500).json({ error: 'Registration failed' });
-  }
-});
-
-/**
- * GET /admin/me
- * Get current authenticated user info (requires auth)
- * Response: { data: { uid, email, role } }
- */
-app.get('/admin/me', requireAuth, async (req: AuthRequest, res) => {
-  try {
-    if (!req.user) {
-      res.status(401).json({ error: 'Not authenticated' });
-      return;
-    }
-
-    const user = await getUserById(req.user.uid);
-    if (!user) {
-      res.status(404).json({ error: 'User not found' });
-      return;
-    }
-
-    res.json(jsonOk({ uid: user.id, email: user.email, role: user.role }));
-  } catch (error) {
-    console.error('Error in /admin/me:', error);
-    res.status(500).json({ error: 'Failed to fetch user' });
-  }
-});
-
 // ============ Admin Stream Provider Endpoints ============
 
 /**
@@ -271,7 +196,7 @@ app.get('/admin/me', requireAuth, async (req: AuthRequest, res) => {
  * Request body: { type, name, config }
  * Response: { data: StreamProvider }
  */
-app.post('/admin/streams', requireAdmin, async (req: AuthRequest, res) => {
+app.post('/admin/streams', requireAdminPasscode, async (req: express.Request, res) => {
   try {
     const { type, name, config } = req.body;
 
@@ -303,7 +228,7 @@ app.post('/admin/streams', requireAdmin, async (req: AuthRequest, res) => {
  * List all stream providers (requires admin role)
  * Response: { data: StreamProvider[] }
  */
-app.get('/admin/streams', requireAdmin, async (_req: AuthRequest, res) => {
+app.get('/admin/streams', requireAdminPasscode, async (_req: express.Request, res) => {
   try {
     const providers = await getStreamProviders();
     res.json(jsonOk(providers));
@@ -319,7 +244,7 @@ app.get('/admin/streams', requireAdmin, async (_req: AuthRequest, res) => {
  * Request body: { type?, name?, config? }
  * Response: { data: { ok: true } }
  */
-app.put('/admin/streams/:id', requireAdmin, async (req: AuthRequest, res) => {
+app.put('/admin/streams/:id', requireAdminPasscode, async (req: express.Request, res) => {
   try {
     const { id } = req.params;
     const { type, name, config } = req.body;
@@ -358,7 +283,7 @@ app.put('/admin/streams/:id', requireAdmin, async (req: AuthRequest, res) => {
  * Delete a stream provider (requires admin role)
  * Response: { data: { ok: true } }
  */
-app.delete('/admin/streams/:id', requireAdmin, async (_req: AuthRequest, res) => {
+app.delete('/admin/streams/:id', requireAdminPasscode, async (_req: express.Request, res) => {
   try {
     const { id } = _req.params;
 
@@ -384,13 +309,8 @@ app.delete('/admin/streams/:id', requireAdmin, async (_req: AuthRequest, res) =>
  * Request body: { streamProviderId, title, shortDescription, hostName, location, metadata? }
  * Response: { data: LiveTour }
  */
-app.post('/admin/tours', requireAuth, async (req: AuthRequest, res) => {
+app.post('/admin/tours', requireAdminPasscode, async (req: express.Request, res) => {
   try {
-    if (!req.user) {
-      res.status(401).json({ error: 'Not authenticated' });
-      return;
-    }
-
     const { streamProviderId, title, shortDescription, hostName, location, metadata } = req.body;
 
     if (!streamProviderId || typeof streamProviderId !== 'string') {
@@ -415,7 +335,7 @@ app.post('/admin/tours', requireAuth, async (req: AuthRequest, res) => {
       title: title.trim(),
       shortDescription: (shortDescription || '').trim(),
       hostName: (hostName || 'Host').trim(),
-      hostId: req.user.uid,
+      hostId: 'admin',
       location: (location || '').trim(),
       status: 'draft',
       metadata: metadata || {},
@@ -433,7 +353,7 @@ app.post('/admin/tours', requireAuth, async (req: AuthRequest, res) => {
  * List live tour history (requires auth)
  * Response: { data: LiveTour[] }
  */
-app.get('/admin/tours', requireAuth, async (_req: AuthRequest, res) => {
+app.get('/admin/tours', requireAdminPasscode, async (_req: express.Request, res) => {
   try {
     const tours = await getLiveTourHistory(100);
     res.json(jsonOk(tours));
@@ -449,7 +369,7 @@ app.get('/admin/tours', requireAuth, async (_req: AuthRequest, res) => {
  * Request body: { title?, shortDescription?, hostName?, location?, status?, metadata? }
  * Response: { data: { ok: true } }
  */
-app.put('/admin/tours/:id', requireAuth, async (_req: AuthRequest, res) => {
+app.put('/admin/tours/:id', requireAdminPasscode, async (_req: express.Request, res) => {
   try {
     const { id } = _req.params;
     const { title, shortDescription, hostName, location, status, metadata } = _req.body;
@@ -482,9 +402,9 @@ app.put('/admin/tours/:id', requireAuth, async (_req: AuthRequest, res) => {
     await updateLiveTour(id, updates);
 
     // Log admin action
-    if (req.user && status) {
+    if (status) {
       void writeOperationLog({
-        userId: req.user.uid,
+        userId: 'admin',
         action: status === 'live' ? 'tour_go_live' : status === 'ended' ? 'tour_end' : 'tour_update',
         resourceType: 'live_tour',
         resourceId: id,
@@ -514,29 +434,29 @@ app.get('/api/catalog', async (_req, res) => {
 
 // ============ Admin Catalog Endpoints ============
 
-app.get('/admin/catalog', requireAdmin, async (_req: AuthRequest, res) => {
+app.get('/admin/catalog', requireAdminPasscode, async (_req: express.Request, res) => {
   try {
-    const db = getFirestore();
-    const snapshot = await db.collection('catalog_tours').orderBy('createdAt', 'desc').limit(200).get();
-    res.json(jsonOk(snapshot.docs.map(d => d.data())));
+    const db = getRealtimeDB();
+    const snapshot = await db.ref(COLLECTIONS.catalog_tours).get();
+    const data = snapshot.val();
+    const tours = data ? Object.keys(data).map(k => ({ ...data[k], id: k })) : [];
+    tours.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    res.json(jsonOk(tours));
   } catch (error) {
     console.error('Error fetching catalog tours:', error);
     res.status(500).json({ error: 'Failed to fetch catalog tours' });
   }
 });
 
-app.post('/admin/catalog', requireAdmin, async (req: AuthRequest, res) => {
+app.post('/admin/catalog', requireAdminPasscode, async (req: express.Request, res) => {
   try {
     const { title, category, duration, description, imageUrl, free, views, trend, visibility } = req.body;
     if (!title || typeof title !== 'string') {
       res.status(400).json({ error: 'Title is required.' });
       return;
     }
-    const db = getFirestore();
-    const docRef = db.collection('catalog_tours').doc();
-    const now = new Date();
-    const tour = {
-      id: docRef.id, title: title.trim(),
+    const tour = await createCatalogTour({
+      title: title.trim(),
       category: category || 'Culture',
       duration: duration || '',
       description: description || '',
@@ -545,9 +465,7 @@ app.post('/admin/catalog', requireAdmin, async (req: AuthRequest, res) => {
       views: views || '',
       trend: trend || '',
       visibility: visibility || 'public',
-      createdAt: now, updatedAt: now,
-    };
-    await docRef.set(tour);
+    });
     res.status(201).json(jsonOk(tour));
   } catch (error) {
     console.error('Error creating catalog tour:', error);
@@ -555,11 +473,10 @@ app.post('/admin/catalog', requireAdmin, async (req: AuthRequest, res) => {
   }
 });
 
-app.put('/admin/catalog/:id', requireAdmin, async (req: AuthRequest, res) => {
+app.put('/admin/catalog/:id', requireAdminPasscode, async (req: express.Request, res) => {
   try {
     const { id } = req.params;
-    const db = getFirestore();
-    await db.collection('catalog_tours').doc(id).update({ ...req.body, updatedAt: new Date() });
+    await updateCatalogTour(id, req.body);
     res.json(jsonOk({ ok: true }));
   } catch (error) {
     console.error('Error updating catalog tour:', error);
@@ -567,11 +484,10 @@ app.put('/admin/catalog/:id', requireAdmin, async (req: AuthRequest, res) => {
   }
 });
 
-app.delete('/admin/catalog/:id', requireAdmin, async (req: AuthRequest, res) => {
+app.delete('/admin/catalog/:id', requireAdminPasscode, async (req: express.Request, res) => {
   try {
     const { id } = req.params;
-    const db = getFirestore();
-    await db.collection('catalog_tours').doc(id).delete();
+    await deleteCatalogTour(id);
     res.json(jsonOk({ ok: true }));
   } catch (error) {
     console.error('Error deleting catalog tour:', error);
@@ -581,26 +497,25 @@ app.delete('/admin/catalog/:id', requireAdmin, async (req: AuthRequest, res) => 
 
 // ============ Admin Recommended Tours Endpoints ============
 
-app.post('/admin/recommended-tours', requireAdmin, async (req: AuthRequest, res) => {
+app.post('/admin/recommended-tours', requireAdminPasscode, async (req: express.Request, res) => {
   try {
     const { title, host, time, tags, img, rank } = req.body;
     if (!title || typeof title !== 'string') {
       res.status(400).json({ error: 'Title is required.' });
       return;
     }
-    const { getFirestore, COLLECTIONS } = await import('./src/server/db/firestore');
-    const db = getFirestore();
-    const docRef = db.collection(COLLECTIONS.recommended_tours).doc();
-    const now = new Date();
-    await docRef.set({ id: docRef.id, tourId: '', title, host: host || '', time: time || '', tags: tags || [], img: img || '', rank: Number(rank) || 1, free: true, featured: false, createdAt: now, updatedAt: now });
-    res.status(201).json(jsonOk({ id: docRef.id }));
+    const db = getRealtimeDB();
+    const ref = db.ref(COLLECTIONS.recommended_tours).push();
+    const now = new Date().toISOString();
+    await ref.set({ id: ref.key, tourId: '', title, host: host || '', time: time || '', tags: tags || [], img: img || '', rank: Number(rank) || 1, free: true, featured: false, createdAt: now, updatedAt: now });
+    res.status(201).json(jsonOk({ id: ref.key }));
   } catch (error) {
     console.error('Error creating recommended tour:', error);
     res.status(500).json({ error: 'Failed to create tour' });
   }
 });
 
-app.put('/admin/recommended-tours/:id', requireAdmin, async (req: AuthRequest, res) => {
+app.put('/admin/recommended-tours/:id', requireAdminPasscode, async (req: express.Request, res) => {
   try {
     const { id } = req.params;
     const { updateRecommendedTour } = await import('./src/server/db/services');
@@ -612,7 +527,7 @@ app.put('/admin/recommended-tours/:id', requireAdmin, async (req: AuthRequest, r
   }
 });
 
-app.delete('/admin/recommended-tours/:id', requireAdmin, async (req: AuthRequest, res) => {
+app.delete('/admin/recommended-tours/:id', requireAdminPasscode, async (req: express.Request, res) => {
   try {
     const { id } = req.params;
     const { deleteRecommendedTour } = await import('./src/server/db/services');
@@ -626,7 +541,7 @@ app.delete('/admin/recommended-tours/:id', requireAdmin, async (req: AuthRequest
 
 // ============ Admin Analytics & Logs Endpoints ============
 
-app.get('/admin/analytics', requireAdmin, async (req: AuthRequest, res) => {
+app.get('/admin/analytics', requireAdminPasscode, async (req: express.Request, res) => {
   try {
     const summary = await getAnalyticsSummary();
     res.json(jsonOk(summary));
@@ -636,7 +551,7 @@ app.get('/admin/analytics', requireAdmin, async (req: AuthRequest, res) => {
   }
 });
 
-app.get('/admin/logs', requireAdmin, async (_req: AuthRequest, res) => {
+app.get('/admin/logs', requireAdminPasscode, async (_req: express.Request, res) => {
   try {
     const logs = await getOperationLogs(200);
     res.json(jsonOk(logs));
@@ -648,7 +563,7 @@ app.get('/admin/logs', requireAdmin, async (_req: AuthRequest, res) => {
 
 // ============ Admin Tour Requests + Newsletter Endpoints ============
 
-app.get('/admin/tour-requests', requireAdmin, async (_req: AuthRequest, res) => {
+app.get('/admin/tour-requests', requireAdminPasscode, async (_req: express.Request, res) => {
   try {
     const { getTourRequests } = await import('./src/server/db/services');
     const requests = await getTourRequests(200);
@@ -659,7 +574,7 @@ app.get('/admin/tour-requests', requireAdmin, async (_req: AuthRequest, res) => 
   }
 });
 
-app.put('/admin/tour-requests/:id', requireAdmin, async (req: AuthRequest, res) => {
+app.put('/admin/tour-requests/:id', requireAdminPasscode, async (req: express.Request, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -676,7 +591,7 @@ app.put('/admin/tour-requests/:id', requireAdmin, async (req: AuthRequest, res) 
   }
 });
 
-app.get('/admin/newsletter', requireAdmin, async (_req: AuthRequest, res) => {
+app.get('/admin/newsletter', requireAdminPasscode, async (_req: express.Request, res) => {
   try {
     const { getNewsletterSubscribers } = await import('./src/server/db/services');
     const subscribers = await getNewsletterSubscribers(1000);

@@ -1,6 +1,30 @@
 {
   "rules": {
-    ".read": false,
-    ".write": false
+    ".read": true,
+    ".write": true,
+    "recommended_tours": {
+      ".indexOn": ["rank", "createdAt"]
+    },
+    "catalog_tours": {
+      ".indexOn": ["createdAt", "visibility", "category"]
+    },
+    "tour_requests": {
+      ".indexOn": ["createdAt", "status"]
+    },
+    "newsletter_subscribers": {
+      ".indexOn": ["createdAt"]
+    },
+    "stream_providers": {
+      ".indexOn": ["createdAt"]
+    },
+    "live_tours": {
+      ".indexOn": ["createdAt", "status"]
+    },
+    "operation_logs": {
+      ".indexOn": ["timestamp"]
+    },
+    "viewer_snapshots": {
+      ".indexOn": ["timestamp"]
+    }
   }
 }

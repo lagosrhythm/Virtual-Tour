@@ -13,7 +13,6 @@ function toArray<T>(obj: any): T[] {
   if (!obj) return [];
   return Object.keys(obj).map(key => ({
     ...obj[key],
-    // Handle potential Date objects that were stored as strings
     createdAt: obj[key].createdAt ? new Date(obj[key].createdAt) : undefined,
     updatedAt: obj[key].updatedAt ? new Date(obj[key].updatedAt) : undefined,
     timestamp: obj[key].timestamp ? new Date(obj[key].timestamp) : undefined,
@@ -53,7 +52,7 @@ export async function getStreamProvider(id: string): Promise<StreamProvider | nu
 export async function getStreamProviders(): Promise<StreamProvider[]> {
   const db = getRealtimeDB();
   const snapshot = await db.ref(COLLECTIONS.stream_providers).get();
-  return toArray<StreamProvider>(snapshot.val()).sort((a, b) => 
+  return toArray<StreamProvider>(snapshot.val()).sort((a, b) =>
     (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0)
   );
 }
@@ -97,13 +96,14 @@ export async function getTourRequests(
   status?: 'new' | 'reviewed' | 'planned' | 'rejected',
 ): Promise<TourRequest[]> {
   const db = getRealtimeDB();
-  let query: any = db.ref(COLLECTIONS.tour_requests).orderByChild('createdAt').limitToLast(limit);
-  const snapshot = await query.get();
+  const snapshot = await db.ref(COLLECTIONS.tour_requests).get();
   let results = toArray<TourRequest>(snapshot.val());
   if (status) {
     results = results.filter(r => r.status === status);
   }
-  return results.reverse();
+  return results
+    .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0))
+    .slice(0, limit);
 }
 
 export async function updateTourRequestStatus(
@@ -124,8 +124,8 @@ export async function addNewsletterSubscriber(
   source: 'welcome_modal' | 'newsletter_signup' | 'other' = 'other',
 ): Promise<NewsletterSubscriber> {
   const db = getRealtimeDB();
-  const normalizedEmail = email.toLowerCase().replace(/\./g, ','); // RTDB keys can't contain dots
-  
+  const normalizedEmail = email.toLowerCase().replace(/\./g, ',');
+
   const ref = db.ref(COLLECTIONS.newsletter_subscribers).child(normalizedEmail);
   const snapshot = await ref.get();
 
@@ -159,9 +159,11 @@ export async function addNewsletterSubscriber(
 
 export async function getNewsletterSubscribers(limit = 1000): Promise<NewsletterSubscriber[]> {
   const db = getRealtimeDB();
-  const snapshot = await db.ref(COLLECTIONS.newsletter_subscribers)
-    .orderByChild('subscribed').equalTo(true).limitToLast(limit).get();
-  return toArray<NewsletterSubscriber>(snapshot.val()).reverse();
+  const snapshot = await db.ref(COLLECTIONS.newsletter_subscribers).get();
+  return toArray<NewsletterSubscriber>(snapshot.val())
+    .filter(s => s.subscribed)
+    .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0))
+    .slice(0, limit);
 }
 
 export async function unsubscribeNewsletterSubscriber(email: string): Promise<void> {
@@ -178,8 +180,10 @@ export async function unsubscribeNewsletterSubscriber(email: string): Promise<vo
 
 export async function getRecommendedTours(limit = 100): Promise<any[]> {
   const db = getRealtimeDB();
-  const snapshot = await db.ref(COLLECTIONS.recommended_tours).orderByChild('rank').limitToFirst(limit).get();
-  return toArray<any>(snapshot.val());
+  const snapshot = await db.ref(COLLECTIONS.recommended_tours).get();
+  return toArray<any>(snapshot.val())
+    .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0))
+    .slice(0, limit);
 }
 
 export async function createRecommendedTour(tour: Omit<RecommendedTour, 'id' | 'createdAt' | 'updatedAt'>): Promise<RecommendedTour> {
@@ -219,9 +223,9 @@ export async function deleteRecommendedTour(id: string): Promise<void> {
 
 export async function getActiveLiveTour(): Promise<LiveTour | null> {
   const db = getRealtimeDB();
-  const snapshot = await db.ref(COLLECTIONS.live_tours).orderByChild('status').equalTo('live').limitToFirst(1).get();
-  if (!snapshot.exists()) return null;
-  return toArray<LiveTour>(snapshot.val())[0];
+  const snapshot = await db.ref(COLLECTIONS.live_tours).get();
+  const tours = toArray<LiveTour>(snapshot.val()).filter(t => t.status === 'live');
+  return tours[0] ?? null;
 }
 
 export async function createLiveTour(
@@ -257,16 +261,21 @@ export async function updateLiveTour(id: string, updates: Partial<LiveTour>): Pr
 
 export async function getLiveTourHistory(limit = 50): Promise<LiveTour[]> {
   const db = getRealtimeDB();
-  const snapshot = await db.ref(COLLECTIONS.live_tours).orderByChild('createdAt').limitToLast(limit).get();
-  return toArray<LiveTour>(snapshot.val()).reverse();
+  const snapshot = await db.ref(COLLECTIONS.live_tours).get();
+  return toArray<LiveTour>(snapshot.val())
+    .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0))
+    .slice(0, limit);
 }
 
 // ============ Catalog Tours ============
 
 export async function getCatalogTours(limit = 100): Promise<CatalogTour[]> {
   const db = getRealtimeDB();
-  const snapshot = await db.ref(COLLECTIONS.catalog_tours).orderByChild('visibility').equalTo('public').limitToLast(limit).get();
-  return toArray<CatalogTour>(snapshot.val()).reverse();
+  const snapshot = await db.ref(COLLECTIONS.catalog_tours).get();
+  return toArray<CatalogTour>(snapshot.val())
+    .filter(t => t.visibility === 'public')
+    .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0))
+    .slice(0, limit);
 }
 
 export async function createCatalogTour(tour: Omit<CatalogTour, 'id' | 'createdAt' | 'updatedAt'>): Promise<CatalogTour> {
@@ -318,8 +327,10 @@ export async function writeOperationLog(
 
 export async function getOperationLogs(limit = 100): Promise<import('./types').OperationLog[]> {
   const db = getRealtimeDB();
-  const snapshot = await db.ref(COLLECTIONS.operation_logs).orderByChild('timestamp').limitToLast(limit).get();
-  return toArray<import('./types').OperationLog>(snapshot.val()).reverse();
+  const snapshot = await db.ref(COLLECTIONS.operation_logs).get();
+  return toArray<import('./types').OperationLog>(snapshot.val())
+    .sort((a, b) => (b.timestamp?.getTime() ?? 0) - (a.timestamp?.getTime() ?? 0))
+    .slice(0, limit);
 }
 
 export async function writeViewerSnapshot(tourId: string, viewerCount: number): Promise<void> {
@@ -346,18 +357,20 @@ export async function getAnalyticsSummary(): Promise<{
   recentLogs: import('./types').OperationLog[];
 }> {
   const db = getRealtimeDB();
-  
+
   const [reqSnap, subSnap, tourSnap, logSnap] = await Promise.all([
     db.ref(COLLECTIONS.tour_requests).get(),
     db.ref(COLLECTIONS.newsletter_subscribers).get(),
     db.ref(COLLECTIONS.live_tours).get(),
-    db.ref(COLLECTIONS.operation_logs).orderByChild('timestamp').limitToLast(20).get(),
+    db.ref(COLLECTIONS.operation_logs).get(),
   ]);
 
   const reqs = toArray<any>(reqSnap.val());
   const subs = toArray<any>(subSnap.val()).filter(s => s.subscribed);
   const tours = toArray<LiveTour>(tourSnap.val());
-  const logs = toArray<import('./types').OperationLog>(logSnap.val()).reverse();
+  const logs = toArray<import('./types').OperationLog>(logSnap.val())
+    .sort((a, b) => (b.timestamp?.getTime() ?? 0) - (a.timestamp?.getTime() ?? 0))
+    .slice(0, 20);
 
   let totalViewers = 0;
   tours.forEach(t => {

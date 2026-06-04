@@ -28,7 +28,7 @@ interface FormState {
 const EMPTY_FORM: FormState = { type: 'youtube', name: '', configRaw: '{}' };
 
 export default function StreamProviderManager() {
-  const { token } = useAdminAuth();
+  const { passcode } = useAdminAuth();
   const [providers, setProviders] = useState<StreamProvider[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -39,9 +39,9 @@ export default function StreamProviderManager() {
   const [formError, setFormError] = useState('');
 
   async function load() {
-    if (!token) return;
+    if (!passcode) return;
     try {
-      const res = await getStreamProviders(token);
+      const res = await getStreamProviders(passcode);
       setProviders(res.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load');
@@ -50,7 +50,7 @@ export default function StreamProviderManager() {
     }
   }
 
-  useEffect(() => { void load(); }, [token]);
+  useEffect(() => { void load(); }, [passcode]);
 
   function openCreate() {
     setEditingId(null);
@@ -67,7 +67,7 @@ export default function StreamProviderManager() {
   }
 
   async function handleSave() {
-    if (!token) return;
+    if (!passcode) return;
     setFormError('');
     let config: Record<string, unknown>;
     try {
@@ -80,9 +80,9 @@ export default function StreamProviderManager() {
     setSaving(true);
     try {
       if (editingId) {
-        await updateStreamProvider(token, editingId, { type: form.type, name: form.name.trim(), config });
+        await updateStreamProvider(passcode, editingId, { type: form.type, name: form.name.trim(), config });
       } else {
-        await createStreamProvider(token, { type: form.type, name: form.name.trim(), config });
+        await createStreamProvider(passcode, { type: form.type, name: form.name.trim(), config });
       }
       setShowForm(false);
       await load();
@@ -94,9 +94,9 @@ export default function StreamProviderManager() {
   }
 
   async function handleDelete(id: string) {
-    if (!token || !confirm('Delete this stream provider?')) return;
+    if (!passcode || !confirm('Delete this stream provider?')) return;
     try {
-      await deleteStreamProvider(token, id);
+      await deleteStreamProvider(passcode, id);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Delete failed');

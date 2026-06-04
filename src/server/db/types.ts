@@ -48,6 +48,8 @@ export interface CatalogTour {
   description: string;
   imageUrl: string;
   free: boolean;
+  views?: string;
+  trend?: string;
   visibility: 'public' | 'draft' | 'archived';
   createdAt: Date;
   updatedAt: Date;

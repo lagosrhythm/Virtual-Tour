@@ -11,7 +11,7 @@ interface HostGoLiveProps {
 }
 
 export default function HostGoLive({ tourId, streamKey, ingestUrl, onEnd }: HostGoLiveProps) {
-  const { token } = useAdminAuth();
+  const { passcode } = useAdminAuth();
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [videoEnabled, setVideoEnabled] = useState(true);
@@ -59,10 +59,10 @@ export default function HostGoLive({ tourId, streamKey, ingestUrl, onEnd }: Host
   };
 
   const startStream = async () => {
-    if (!stream || !token) return;
+    if (!stream || !passcode) return;
     setIsStreaming(true);
     try {
-      await updateLiveTour(token, tourId, { status: 'live' });
+      await updateLiveTour(passcode, tourId, { status: 'live' });
       console.log(`Starting WebRTC stream for tour ${tourId} to ${ingestUrl} with key ${streamKey}`);
     } catch (err) {
       setError('Failed to update tour status to live.');
@@ -71,9 +71,9 @@ export default function HostGoLive({ tourId, streamKey, ingestUrl, onEnd }: Host
   };
 
   const stopStream = async () => {
-    if (!token) return;
+    if (!passcode) return;
     try {
-      await updateLiveTour(token, tourId, { status: 'ended' });
+      await updateLiveTour(passcode, tourId, { status: 'ended' });
       setIsStreaming(false);
       onEnd();
     } catch (err) {

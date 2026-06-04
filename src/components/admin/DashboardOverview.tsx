@@ -9,17 +9,17 @@ interface Props {
 }
 
 export default function DashboardOverview({ onNavigate }: Props) {
-  const { token } = useAdminAuth();
+  const { passcode } = useAdminAuth();
   const [stats, setStats] = useState({ providers: 0, activeTours: 0, requests: 0, subscribers: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!token) return;
+    if (!passcode) return;
     Promise.all([
-      getStreamProviders(token),
-      getLiveTours(token),
-      getTourRequests(token),
-      getNewsletterSubscribers(token),
+      getStreamProviders(passcode),
+      getLiveTours(passcode),
+      getTourRequests(passcode),
+      getNewsletterSubscribers(passcode),
     ])
       .then(([p, t, r, n]) => {
         setStats({
@@ -31,7 +31,7 @@ export default function DashboardOverview({ onNavigate }: Props) {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [passcode]);
 
   const cards = [
     { label: 'Stream Providers', value: stats.providers, icon: Radio, view: 'providers' as AdminView, color: 'text-coral' },

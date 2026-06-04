@@ -15,7 +15,7 @@ interface LiveControlPanelProps {
 }
 
 export default function LiveControlPanel({ onStartStream }: LiveControlPanelProps) {
-  const { token } = useAdminAuth();
+  const { passcode } = useAdminAuth();
   const [providers, setProviders] = useState<StreamProvider[]>([]);
   const [tours, setTours] = useState<LiveTourRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,9 +37,9 @@ export default function LiveControlPanel({ onStartStream }: LiveControlPanelProp
   });
 
   async function load() {
-    if (!token) return;
+    if (!passcode) return;
     try {
-      const [pRes, tRes] = await Promise.all([getStreamProviders(token), getLiveTours(token)]);
+      const [pRes, tRes] = await Promise.all([getStreamProviders(passcode), getLiveTours(passcode)]);
       setProviders(pRes.data);
       setTours(tRes.data);
       if (pRes.data.length > 0 && !form.streamProviderId) {
@@ -52,19 +52,19 @@ export default function LiveControlPanel({ onStartStream }: LiveControlPanelProp
     }
   }
 
-  useEffect(() => { void load(); }, [token]);
+  useEffect(() => { void load(); }, [passcode]);
 
   const activeTour = tours.find(t => t.status === 'live');
   const selectedProvider = providers.find(p => p.id === form.streamProviderId);
 
   async function handleCreate() {
-    if (!token) return;
+    if (!passcode) return;
     if (!form.title.trim()) { setFormError('Title is required.'); return; }
     if (!form.streamProviderId) { setFormError('Select a stream provider.'); return; }
     setSaving(true);
     setFormError('');
     try {
-      await createLiveTour(token, {
+      await createLiveTour(passcode, {
         streamProviderId: form.streamProviderId,
         title: form.title.trim(),
         shortDescription: form.shortDescription.trim(),
@@ -87,9 +87,9 @@ export default function LiveControlPanel({ onStartStream }: LiveControlPanelProp
   }
 
   async function handleGoLive(id: string) {
-    if (!token) return;
+    if (!passcode) return;
     try {
-      await updateLiveTour(token, id, { status: 'live' });
+      await updateLiveTour(passcode, id, { status: 'live' });
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to go live');
@@ -97,9 +97,9 @@ export default function LiveControlPanel({ onStartStream }: LiveControlPanelProp
   }
 
   async function handleEndBroadcast(id: string) {
-    if (!token || !confirm('End this broadcast?')) return;
+    if (!passcode || !confirm('End this broadcast?')) return;
     try {
-      await updateLiveTour(token, id, { status: 'ended' });
+      await updateLiveTour(passcode, id, { status: 'ended' });
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to end broadcast');

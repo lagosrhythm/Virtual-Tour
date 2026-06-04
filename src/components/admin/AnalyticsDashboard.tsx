@@ -22,22 +22,22 @@ function timeAgo(ts: string) {
 }
 
 export default function AnalyticsDashboard() {
-  const { token } = useAdminAuth();
+  const { passcode } = useAdminAuth();
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [logs, setLogs] = useState<OperationLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!token) return;
-    Promise.all([getAnalyticsSummary(token), getOperationLogs(token)])
+    if (!passcode) return;
+    Promise.all([getAnalyticsSummary(passcode), getOperationLogs(passcode)])
       .then(([s, l]) => {
         setSummary(s.data);
         setLogs(l.data);
       })
       .catch(err => setError(err instanceof Error ? err.message : 'Failed to load'))
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [passcode]);
 
   const statCards = summary ? [
     { label: 'Total Tour Requests', value: summary.totalTourRequests, icon: Users, color: 'text-blue-500' },

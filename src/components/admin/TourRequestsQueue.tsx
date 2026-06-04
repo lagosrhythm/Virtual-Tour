@@ -12,16 +12,16 @@ const STATUS_STYLES: Record<TourRequest['status'], string> = {
 };
 
 export default function TourRequestsQueue() {
-  const { token } = useAdminAuth();
+  const { passcode } = useAdminAuth();
   const [requests, setRequests] = useState<TourRequest[]>([]);
   const [filter, setFilter] = useState<TourRequest['status'] | 'all'>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   async function load() {
-    if (!token) return;
+    if (!passcode) return;
     try {
-      const res = await getTourRequests(token);
+      const res = await getTourRequests(passcode);
       setRequests(res.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load');
@@ -30,12 +30,12 @@ export default function TourRequestsQueue() {
     }
   }
 
-  useEffect(() => { void load(); }, [token]);
+  useEffect(() => { void load(); }, [passcode]);
 
   async function handleStatus(id: string, status: TourRequest['status']) {
-    if (!token) return;
+    if (!passcode) return;
     try {
-      await updateTourRequestStatus(token, id, status);
+      await updateTourRequestStatus(passcode, id, status);
       setRequests(r => r.map(req => req.id === id ? { ...req, status } : req));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Update failed');

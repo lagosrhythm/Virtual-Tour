@@ -5,10 +5,10 @@ async function verify() {
   console.log('--- RTDB Data Verification ---');
   try {
     const { rtdb } = initializeFirebase();
-    
+
     const snapshot = await rtdb.ref('/').get();
     const data = snapshot.val();
-    
+
     if (!data) {
       console.log('Database is empty.');
     } else {
@@ -17,7 +17,7 @@ async function verify() {
         console.log(`✓ ${key}: ${count} items`);
       }
     }
-    
+
     console.log('----------------------------------');
     console.log('✓ Verification complete');
     process.exit(0);

@@ -4,18 +4,18 @@ import { getNewsletterSubscribers, type NewsletterSubscriber } from '../../lib/a
 import { useAdminAuth } from './AdminAuthContext';
 
 export default function NewsletterManager() {
-  const { token } = useAdminAuth();
+  const { passcode } = useAdminAuth();
   const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!token) return;
-    getNewsletterSubscribers(token)
+    if (!passcode) return;
+    getNewsletterSubscribers(passcode)
       .then(res => setSubscribers(res.data))
       .catch(err => setError(err instanceof Error ? err.message : 'Failed to load'))
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [passcode]);
 
   function exportCsv() {
     const rows = [

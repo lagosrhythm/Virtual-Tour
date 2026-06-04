@@ -13,13 +13,16 @@ export interface NewsletterInput {
   email: string;
 }
 
+const API_BASE = import.meta.env.DEV ? 'http://localhost:3001' : '';
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
+  const url = path.startsWith('/admin') ? `${API_BASE}${path}` : path;
+  const response = await fetch(url, {
+    ...init,
     headers: {
       'Content-Type': 'application/json',
       ...init?.headers,
     },
-    ...init,
   });
 
   const contentType = response.headers.get('content-type') ?? '';
@@ -39,10 +42,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (!contentType.includes('application/json')) {
-    throw new Error('API endpoint returned HTML instead of JSON. Start the production server or use the Vite dev API middleware.');
+    throw new Error('API endpoint returned HTML instead of JSON.');
   }
 
   return response.json() as Promise<T>;
+}
+
+function adminHeaders(passcode: string) {
+  return { 'X-Admin-Passcode': passcode };
 }
 
 export async function getRecommendedTours() {
@@ -64,7 +71,7 @@ export interface AdminRecommendedTourInput {
 export async function adminCreateRecommendedTour(passcode: string, data: AdminRecommendedTourInput) {
   return request<ApiResult<{ id: string }>>('/admin/recommended-tours', {
     method: 'POST',
-    headers: { 'X-Admin-Passcode': passcode },
+    headers: adminHeaders(passcode),
     body: JSON.stringify(data),
   });
 }
@@ -76,7 +83,7 @@ export async function adminUpdateRecommendedTour(
 ) {
   return request<ApiResult<{ ok: true }>>(`/admin/recommended-tours/${id}`, {
     method: 'PUT',
-    headers: { 'X-Admin-Passcode': passcode },
+    headers: adminHeaders(passcode),
     body: JSON.stringify(data),
   });
 }
@@ -84,7 +91,7 @@ export async function adminUpdateRecommendedTour(
 export async function adminDeleteRecommendedTour(passcode: string, id: string | number) {
   return request<ApiResult<{ ok: true }>>(`/admin/recommended-tours/${id}`, {
     method: 'DELETE',
-    headers: { 'X-Admin-Passcode': passcode },
+    headers: adminHeaders(passcode),
   });
 }
 
@@ -102,28 +109,6 @@ export async function subscribeToNewsletter(input: NewsletterInput) {
   });
 }
 
-// ============ Admin Auth ============
-
-export interface AdminUser {
-  uid: string;
-  email: string;
-  role: 'admin' | 'host' | 'viewer';
-}
-
-export async function adminLogin(token: string) {
-  return request<ApiResult<AdminUser>>('/admin/login', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ token }),
-  });
-}
-
-export async function getAdminMe(token: string) {
-  return request<ApiResult<AdminUser>>('/admin/me', {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-}
-
 // ============ Admin Stream Providers ============
 
 export interface StreamProvider {
@@ -134,39 +119,39 @@ export interface StreamProvider {
   createdAt: string;
 }
 
-export async function getStreamProviders(token: string) {
+export async function getStreamProviders(passcode: string) {
   return request<ApiResult<StreamProvider[]>>('/admin/streams', {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: adminHeaders(passcode),
   });
 }
 
 export async function createStreamProvider(
-  token: string,
+  passcode: string,
   data: { type: StreamProvider['type']; name: string; config: Record<string, unknown> },
 ) {
   return request<ApiResult<StreamProvider>>('/admin/streams', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
+    headers: adminHeaders(passcode),
     body: JSON.stringify(data),
   });
 }
 
 export async function updateStreamProvider(
-  token: string,
+  passcode: string,
   id: string,
   data: Partial<{ type: StreamProvider['type']; name: string; config: Record<string, unknown> }>,
 ) {
   return request<ApiResult<{ ok: true }>>(`/admin/streams/${id}`, {
     method: 'PUT',
-    headers: { Authorization: `Bearer ${token}` },
+    headers: adminHeaders(passcode),
     body: JSON.stringify(data),
   });
 }
 
-export async function deleteStreamProvider(token: string, id: string) {
+export async function deleteStreamProvider(passcode: string, id: string) {
   return request<ApiResult<{ ok: true }>>(`/admin/streams/${id}`, {
     method: 'DELETE',
-    headers: { Authorization: `Bearer ${token}` },
+    headers: adminHeaders(passcode),
   });
 }
 
@@ -192,14 +177,14 @@ export interface LiveTourRecord {
   createdAt: string;
 }
 
-export async function getLiveTours(token: string) {
+export async function getLiveTours(passcode: string) {
   return request<ApiResult<LiveTourRecord[]>>('/admin/tours', {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: adminHeaders(passcode),
   });
 }
 
 export async function createLiveTour(
-  token: string,
+  passcode: string,
   data: {
     streamProviderId: string;
     title: string;
@@ -211,19 +196,19 @@ export async function createLiveTour(
 ) {
   return request<ApiResult<LiveTourRecord>>('/admin/tours', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
+    headers: adminHeaders(passcode),
     body: JSON.stringify(data),
   });
 }
 
 export async function updateLiveTour(
-  token: string,
+  passcode: string,
   id: string,
   data: Partial<Omit<LiveTourRecord, 'id' | 'createdAt'>>,
 ) {
   return request<ApiResult<{ ok: true }>>(`/admin/tours/${id}`, {
     method: 'PUT',
-    headers: { Authorization: `Bearer ${token}` },
+    headers: adminHeaders(passcode),
     body: JSON.stringify(data),
   });
 }
@@ -238,20 +223,20 @@ export interface TourRequest {
   createdAt: string;
 }
 
-export async function getTourRequests(token: string) {
+export async function getTourRequests(passcode: string) {
   return request<ApiResult<TourRequest[]>>('/admin/tour-requests', {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: adminHeaders(passcode),
   });
 }
 
 export async function updateTourRequestStatus(
-  token: string,
+  passcode: string,
   id: string,
   status: TourRequest['status'],
 ) {
   return request<ApiResult<{ ok: true }>>(`/admin/tour-requests/${id}`, {
     method: 'PUT',
-    headers: { Authorization: `Bearer ${token}` },
+    headers: adminHeaders(passcode),
     body: JSON.stringify({ status }),
   });
 }
@@ -266,9 +251,9 @@ export interface NewsletterSubscriber {
   createdAt: string;
 }
 
-export async function getNewsletterSubscribers(token: string) {
+export async function getNewsletterSubscribers(passcode: string) {
   return request<ApiResult<NewsletterSubscriber[]>>('/admin/newsletter', {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: adminHeaders(passcode),
   });
 }
 
@@ -293,39 +278,39 @@ export async function getCatalogTours() {
 
 // ============ Admin Catalog ============
 
-export async function adminGetCatalogTours(token: string) {
+export async function adminGetCatalogTours(passcode: string) {
   return request<ApiResult<CatalogTourApi[]>>('/admin/catalog', {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: adminHeaders(passcode),
   });
 }
 
 export async function adminCreateCatalogTour(
-  token: string,
+  passcode: string,
   data: Omit<CatalogTourApi, 'id'>,
 ) {
   return request<ApiResult<CatalogTourApi>>('/admin/catalog', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
+    headers: adminHeaders(passcode),
     body: JSON.stringify(data),
   });
 }
 
 export async function adminUpdateCatalogTour(
-  token: string,
+  passcode: string,
   id: string,
   data: Partial<Omit<CatalogTourApi, 'id'>>,
 ) {
   return request<ApiResult<{ ok: true }>>(`/admin/catalog/${id}`, {
     method: 'PUT',
-    headers: { Authorization: `Bearer ${token}` },
+    headers: adminHeaders(passcode),
     body: JSON.stringify(data),
   });
 }
 
-export async function adminDeleteCatalogTour(token: string, id: string) {
+export async function adminDeleteCatalogTour(passcode: string, id: string) {
   return request<ApiResult<{ ok: true }>>(`/admin/catalog/${id}`, {
     method: 'DELETE',
-    headers: { Authorization: `Bearer ${token}` },
+    headers: adminHeaders(passcode),
   });
 }
 
@@ -352,14 +337,14 @@ export interface AnalyticsSummary {
   recentLogs: OperationLog[];
 }
 
-export async function getAnalyticsSummary(token: string) {
+export async function getAnalyticsSummary(passcode: string) {
   return request<ApiResult<AnalyticsSummary>>('/admin/analytics', {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: adminHeaders(passcode),
   });
 }
 
-export async function getOperationLogs(token: string) {
+export async function getOperationLogs(passcode: string) {
   return request<ApiResult<OperationLog[]>>('/admin/logs', {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: adminHeaders(passcode),
   });
 }
