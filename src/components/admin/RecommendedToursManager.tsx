@@ -1,6 +1,11 @@
 import { Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { getRecommendedTours } from '../../lib/api';
+import {
+  adminCreateRecommendedTour,
+  adminDeleteRecommendedTour,
+  adminUpdateRecommendedTour,
+  getRecommendedTours,
+} from '../../lib/api';
 import type { RecommendedTour } from '../../types';
 import { useAdminAuth } from './AdminAuthContext';
 
@@ -16,7 +21,7 @@ interface FormState {
 const EMPTY_FORM: FormState = { title: '', host: '', time: '', tags: '', img: '', rank: '1' };
 
 export default function RecommendedToursManager() {
-  const { token } = useAdminAuth();
+  const { passcode } = useAdminAuth();
   const [tours, setTours] = useState<RecommendedTour[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -61,7 +66,7 @@ export default function RecommendedToursManager() {
   }
 
   async function handleSave() {
-    if (!token) return;
+    if (!passcode) return;
     if (!form.title.trim()) { setFormError('Title is required.'); return; }
     setSaving(true);
     setFormError('');
@@ -74,16 +79,10 @@ export default function RecommendedToursManager() {
         img: form.img.trim(),
         rank: Number(form.rank) || 1,
       };
-      const method = editingId ? 'PUT' : 'POST';
-      const url = editingId ? `/admin/recommended-tours/${editingId}` : '/admin/recommended-tours';
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const data = await res.json() as { error?: string };
-        throw new Error(data.error ?? 'Save failed');
+      if (editingId) {
+        await adminUpdateRecommendedTour(passcode, editingId, body);
+      } else {
+        await adminCreateRecommendedTour(passcode, body);
       }
       setShowForm(false);
       await load();
@@ -95,13 +94,9 @@ export default function RecommendedToursManager() {
   }
 
   async function handleDelete(id: number | string) {
-    if (!token || !confirm('Delete this tour?')) return;
+    if (!passcode || !confirm('Delete this tour?')) return;
     try {
-      const res = await fetch(`/admin/recommended-tours/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Delete failed');
+      await adminDeleteRecommendedTour(passcode, id);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Delete failed');
