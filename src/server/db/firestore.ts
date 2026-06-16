@@ -34,6 +34,10 @@ export function initializeFirebase() {
     } else {
       const serviceAccountKeyStr = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
       if (!serviceAccountKeyStr) {
+        if (process.env.VERCEL) {
+          console.warn('⚠ Firebase credentials not found on Vercel. Set FIREBASE_SERVICE_ACCOUNT_KEY env var.');
+          return { rtdb: null };
+        }
         throw new Error('Firebase credentials missing.');
       }
       try {
@@ -63,7 +67,13 @@ export function initializeFirebase() {
 }
 
 export function getRealtimeDB(): Database {
-  if (!rtdb) return initializeFirebase().rtdb;
+  if (!rtdb) {
+    const result = initializeFirebase();
+    if (!result.rtdb) {
+      throw new Error('Firebase Realtime Database is not available. Check FIREBASE_SERVICE_ACCOUNT_KEY environment variable.');
+    }
+    return result.rtdb;
+  }
   return rtdb;
 }
 

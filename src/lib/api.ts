@@ -13,10 +13,10 @@ export interface NewsletterInput {
   email: string;
 }
 
-const API_BASE = '';
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const url = path.startsWith('/admin') ? `${API_BASE}${path}` : path;
+  const url = `${API_BASE}${path}`;
   const response = await fetch(url, {
     ...init,
     headers: {

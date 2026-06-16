@@ -72,7 +72,8 @@ export function useTourStatus() {
 
     async function loadInitialStatus() {
       try {
-        const response = await fetch('/api/tour-status');
+        const apiBase = import.meta.env.VITE_API_URL || '';
+        const response = await fetch(`${apiBase}/api/tour-status`);
         if (!response.ok) return;
 
         const result = await response.json() as { data?: TourStatusPayload };
@@ -93,8 +94,19 @@ export function useTourStatus() {
 
   useEffect(() => {
     const configuredUrl = import.meta.env.VITE_TOUR_STATUS_WS_URL;
-    const fallbackProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = configuredUrl || `${fallbackProtocol}//${window.location.host}/api/live`;
+    let wsUrl: string;
+    if (configuredUrl) {
+      wsUrl = configuredUrl;
+    } else {
+      const apiBase = import.meta.env.VITE_API_URL || '';
+      if (apiBase) {
+        // Convert HTTP(S) URL to WebSocket URL
+        wsUrl = apiBase.replace(/^http/, 'ws') + '/api/live';
+      } else {
+        const fallbackProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        wsUrl = `${fallbackProtocol}//${window.location.host}/api/live`;
+      }
+    }
     let socket: WebSocket | null = null;
     let retryTimer: number | undefined;
     let attempts = 0;
