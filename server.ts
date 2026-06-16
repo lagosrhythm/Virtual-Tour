@@ -825,13 +825,16 @@ server.on('upgrade', (req, socket) => {
   socket.on('error', () => sockets.delete(socket));
 });
 
-setInterval(() => {
-  sockets.forEach((socket) => {
-    sendStatus(socket).catch((error) => {
-      console.error('Error sending status to socket:', error);
+// Broadcast status to WebSocket clients every 5s (only on persistent servers)
+if (!process.env.VERCEL) {
+  setInterval(() => {
+    sockets.forEach((socket) => {
+      sendStatus(socket).catch((error) => {
+        console.error('Error sending status to socket:', error);
+      });
     });
-  });
-}, 5000).unref();
+  }, 5000).unref();
+}
 
 // Write viewer snapshot every 30s when a live tour is active (only on persistent servers)
 if (!process.env.VERCEL) {

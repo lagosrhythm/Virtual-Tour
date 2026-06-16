@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { LiveTourDetails } from '../types';
 
 interface StreamProviderInfo {
@@ -63,35 +63,45 @@ function normalizePayload(payload: TourStatusPayload, current: TourStatusState):
   };
 }
 
+async function fetchTourStatus(apiBase: string): Promise<TourStatusPayload | null> {
+  try {
+    const response = await fetch(`${apiBase}/api/tour-status`);
+    if (!response.ok) return null;
+    const result = await response.json() as { data?: TourStatusPayload };
+    return result.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function useTourStatus() {
   const [state, setState] = useState<TourStatusState>(INITIAL_STATE);
   const [connectionState, setConnectionState] = useState<'idle' | 'connecting' | 'connected' | 'disconnected'>('idle');
+  const pollRef = useRef<ReturnType<typeof setInterval> | undefined>();
 
+  // HTTP polling fallback (used when WebSocket fails or is unavailable)
   useEffect(() => {
-    let isMounted = true;
+    const apiBase = import.meta.env.VITE_API_URL || '';
 
-    async function loadInitialStatus() {
-      try {
-        const apiBase = import.meta.env.VITE_API_URL || '';
-        const response = await fetch(`${apiBase}/api/tour-status`);
-        if (!response.ok) return;
-
-        const result = await response.json() as { data?: TourStatusPayload };
-        if (isMounted && result.data) {
-          setState((current) => normalizePayload(result.data as TourStatusPayload, current));
-        }
-      } catch {
-        if (isMounted) setState((current) => current);
+    async function poll() {
+      const data = await fetchTourStatus(apiBase);
+      if (data) {
+        setState((current) => normalizePayload(data, current));
       }
     }
 
-    void loadInitialStatus();
+    // Initial fetch
+    void poll();
+
+    // Poll every 5 seconds
+    pollRef.current = setInterval(poll, 5000);
 
     return () => {
-      isMounted = false;
+      if (pollRef.current) clearInterval(pollRef.current);
     };
   }, []);
 
+  // WebSocket (replaces polling when connected)
   useEffect(() => {
     const configuredUrl = import.meta.env.VITE_TOUR_STATUS_WS_URL;
     let wsUrl: string;
@@ -100,7 +110,6 @@ export function useTourStatus() {
     } else {
       const apiBase = import.meta.env.VITE_API_URL || '';
       if (apiBase) {
-        // Convert HTTP(S) URL to WebSocket URL
         wsUrl = apiBase.replace(/^http/, 'ws') + '/api/live';
       } else {
         const fallbackProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -111,14 +120,22 @@ export function useTourStatus() {
     let retryTimer: number | undefined;
     let attempts = 0;
     let isDisposed = false;
+    let wsConnected = false;
 
     const connect = () => {
+      if (isDisposed) return;
       setConnectionState('connecting');
       socket = new WebSocket(wsUrl);
 
       socket.onopen = () => {
         attempts = 0;
+        wsConnected = true;
         setConnectionState('connected');
+        // Stop HTTP polling — WebSocket is live
+        if (pollRef.current) {
+          clearInterval(pollRef.current);
+          pollRef.current = undefined;
+        }
       };
 
       socket.onmessage = (event) => {
@@ -133,6 +150,19 @@ export function useTourStatus() {
       socket.onclose = () => {
         if (isDisposed) return;
         setConnectionState('disconnected');
+        if (wsConnected) {
+          // WebSocket was connected then dropped — resume polling
+          wsConnected = false;
+          if (!pollRef.current) {
+            const apiBase = import.meta.env.VITE_API_URL || '';
+            const poll = async () => {
+              const data = await fetchTourStatus(apiBase);
+              if (data) setState((current) => normalizePayload(data, current));
+            };
+            void poll();
+            pollRef.current = setInterval(poll, 5000);
+          }
+        }
         attempts += 1;
         const retryDelay = Math.min(30000, 1000 * 2 ** attempts);
         retryTimer = window.setTimeout(connect, retryDelay);
