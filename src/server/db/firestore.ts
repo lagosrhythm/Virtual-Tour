@@ -2,10 +2,9 @@ import { initializeApp, cert, getApps, type ServiceAccount } from 'firebase-admi
 import { getDatabase, type Database } from 'firebase-admin/database';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const projectRoot = path.resolve(__dirname, '../../..');
+
+const projectRoot = process.cwd();
 
 let rtdb: Database | null = null;
 let firebaseAvailable = false;
