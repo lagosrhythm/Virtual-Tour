@@ -1,62 +1,16 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/index.ts",
-      "use": "@vercel/node"
-    }
-  ],
   "rewrites": [
     {
       "source": "/api/(.*)",
       "destination": "/api/index.ts"
     },
     {
-      "source": "/admin/login",
+      "source": "/admin/(.*)",
       "destination": "/api/index.ts"
     },
     {
-      "source": "/admin/register",
-      "destination": "/api/index.ts"
-    },
-    {
-      "source": "/admin/me",
-      "destination": "/api/index.ts"
-    },
-    {
-      "source": "/admin/streams(.*)",
-      "destination": "/api/index.ts"
-    },
-    {
-      "source": "/admin/tours(.*)",
-      "destination": "/api/index.ts"
-    },
-    {
-      "source": "/admin/catalog(.*)",
-      "destination": "/api/index.ts"
-    },
-    {
-      "source": "/admin/recommended-tours(.*)",
-      "destination": "/api/index.ts"
-    },
-    {
-      "source": "/admin/analytics",
-      "destination": "/api/index.ts"
-    },
-    {
-      "source": "/admin/logs",
-      "destination": "/api/index.ts"
-    },
-    {
-      "source": "/admin/tour-requests(.*)",
-      "destination": "/api/index.ts"
-    },
-    {
-      "source": "/admin/newsletter",
-      "destination": "/api/index.ts"
-    },
-    {
-      "source": "/((?!assets|favicon.ico|api|admin/login|admin/register|admin/me|admin/streams|admin/tours|admin/catalog|admin/recommended-tours|admin/analytics|admin/logs|admin/tour-requests|admin/newsletter).*)",
+      "source": "/((?!assets|favicon.ico|api|admin).*)",
       "destination": "/index.html"
     }
   ]
