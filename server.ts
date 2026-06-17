@@ -6,7 +6,7 @@ import path from 'node:path';
 import { Duplex } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
-import app, { getTourStatus, getCurrentLiveTourId } from './api/server';
+import app, { getTourStatus, getCurrentLiveTourId } from './lib/app';
 import { writeViewerSnapshot } from './src/server/db/services';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
