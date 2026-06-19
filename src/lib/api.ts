@@ -369,6 +369,48 @@ export async function hostGetMyTours(passcode: string) {
   });
 }
 
+export async function hostCreateTour(
+  passcode: string,
+  data: {
+    title: string;
+    shortDescription?: string;
+    location?: string;
+    streamProviderId: string;
+    metadata?: LiveTourRecord['metadata'];
+  },
+) {
+  return request<ApiResult<LiveTourRecord>>('/host/tours', {
+    method: 'POST',
+    headers: { 'X-Host-Passcode': passcode },
+    body: JSON.stringify(data),
+  });
+}
+
+export async function hostGetStreamProviders(passcode: string) {
+  return request<ApiResult<StreamProvider[]>>('/host/streams', {
+    headers: { 'X-Host-Passcode': passcode },
+  });
+}
+
+export async function hostUpdateTour(
+  passcode: string,
+  id: string,
+  data: Partial<Omit<LiveTourRecord, 'id' | 'createdAt'>>,
+) {
+  return request<ApiResult<{ ok: true }>>(`/host/tours/${id}`, {
+    method: 'PUT',
+    headers: { 'X-Host-Passcode': passcode },
+    body: JSON.stringify(data),
+  });
+}
+
+export async function hostDeleteTour(passcode: string, id: string) {
+  return request<ApiResult<{ ok: true }>>(`/host/tours/${id}`, {
+    method: 'DELETE',
+    headers: { 'X-Host-Passcode': passcode },
+  });
+}
+
 export async function hostUpdateProfile(
   passcode: string,
   data: { bio?: string; profileImage?: string },

@@ -1,6 +1,6 @@
 import { Radio, User, Eye } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { getLiveTours } from '../../lib/api';
+import { hostGetMyTours } from '../../lib/api';
 import { useHostAuth } from './HostAuthContext';
 import type { HostView } from './HostLayout';
 
@@ -15,11 +15,9 @@ export default function HostOverview({ onNavigate }: Props) {
 
   useEffect(() => {
     if (!passcode || !host) return;
-    getLiveTours(passcode)
+    hostGetMyTours(passcode)
       .then((res) => {
-        const myTours = res.data.filter(
-          (t) => t.hostName === host.name || t.hostName === host.email,
-        );
+        const myTours = res.data;
         setStats({
           totalTours: myTours.length,
           liveTours: myTours.filter((t) => t.status === 'live').length,

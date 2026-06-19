@@ -3,6 +3,7 @@ import { HostAuthProvider, useHostAuth } from './HostAuthContext';
 import HostLayout, { type HostView } from './HostLayout';
 import HostOverview from './HostOverview';
 import HostProfile from './HostProfile';
+import HostTours from './HostTours';
 import HostGoLive from '../admin/HostGoLive';
 import type { LiveTourRecord } from '../../lib/api';
 
@@ -18,6 +19,7 @@ function HostDashboardInner() {
 
   const views: Record<HostView, ReactElement> = {
     dashboard: <HostOverview onNavigate={setView} />,
+    tours: <HostTours onStartStream={handleStartStream} />,
     go_live: activeStreamTour ? (
       <HostGoLive
         tourId={activeStreamTour.id}

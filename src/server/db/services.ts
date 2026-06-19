@@ -347,6 +347,18 @@ export async function deleteRecommendedTour(id: string): Promise<void> {
 
 // ============ Live Tours ============
 
+export async function getLiveTour(id: string): Promise<LiveTour | null> {
+  const db = getRealtimeDB();
+  const snapshot = await db.ref(COLLECTIONS.live_tours).child(id).get();
+  if (!snapshot.exists()) return null;
+  const data = snapshot.val();
+  return {
+    ...data,
+    createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+    updatedAt: data.updatedAt ? new Date(data.updatedAt) : new Date(),
+  } as LiveTour;
+}
+
 export async function getActiveLiveTour(): Promise<LiveTour | null> {
   const db = getRealtimeDB();
   const snapshot = await db.ref(COLLECTIONS.live_tours).get();

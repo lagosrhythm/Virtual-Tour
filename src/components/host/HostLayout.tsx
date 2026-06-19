@@ -5,7 +5,7 @@ import { cn } from '../../lib/utils';
 import { useHostAuth } from './HostAuthContext';
 import HostLogin from './HostLogin';
 
-type HostView = 'dashboard' | 'go_live' | 'profile';
+type HostView = 'dashboard' | 'go_live' | 'tours' | 'profile';
 
 interface HostLayoutProps {
   children: ReactNode;
@@ -15,6 +15,7 @@ interface HostLayoutProps {
 
 const NAV_ITEMS: { id: HostView; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'tours', label: 'My Tours', icon: Radio },
   { id: 'go_live', label: 'Go Live', icon: Radio },
   { id: 'profile', label: 'Profile', icon: User },
 ];

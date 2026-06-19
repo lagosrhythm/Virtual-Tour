@@ -9,6 +9,7 @@ import {
   addNewsletterSubscriber,
   getRecommendedTours,
   getActiveLiveTour,
+  getLiveTour,
   updateLiveTour,
   createStreamProvider,
   getStreamProvider,
@@ -365,10 +366,19 @@ app.get('/admin/tours', requireAdminPasscode, requireFirebaseMiddleware, async (
   }
 });
 
-app.put('/admin/tours/:id', requireAdminPasscode, requireFirebaseMiddleware, async (_req: express.Request, res) => {
+app.put('/admin/tours/:id', requireHostOrAdmin, requireFirebaseMiddleware, async (_req: express.Request, res) => {
   try {
     const { id } = _req.params;
     const { title, shortDescription, hostName, location, status, metadata } = _req.body;
+    const hostData = (_req as any).hostData;
+
+    if (hostData) {
+      const existing = await getLiveTour(id);
+      if (!existing || existing.hostId !== hostData.id) {
+        res.status(403).json({ error: 'You can only manage your own tours.' });
+        return;
+      }
+    }
 
     const updates: Partial<LiveTour> = {};
 
@@ -415,9 +425,19 @@ app.put('/admin/tours/:id', requireAdminPasscode, requireFirebaseMiddleware, asy
   }
 });
 
-app.delete('/admin/tours/:id', requireAdminPasscode, requireFirebaseMiddleware, async (req: express.Request, res) => {
+app.delete('/admin/tours/:id', requireHostOrAdmin, requireFirebaseMiddleware, async (req: express.Request, res) => {
   try {
     const { id } = req.params;
+    const hostData = (req as any).hostData;
+
+    if (hostData) {
+      const existing = await getLiveTour(id);
+      if (!existing || existing.hostId !== hostData.id) {
+        res.status(403).json({ error: 'You can only manage your own tours.' });
+        return;
+      }
+    }
+
     const db = getRealtimeDB();
     await db.ref(COLLECTIONS.live_tours).child(id).remove();
     res.json(jsonOk({ ok: true }));
@@ -646,6 +666,120 @@ app.get('/host/my-tours', requireHostPasscode, requireFirebaseMiddleware, async 
   } catch (error) {
     console.error('Error fetching host tours:', error);
     res.status(500).json({ error: 'Failed to fetch tours.' });
+  }
+});
+
+app.post('/host/tours', requireHostPasscode, requireFirebaseMiddleware, async (req: express.Request, res) => {
+  try {
+    const hostData = (req as any).hostData;
+    const { streamProviderId, title, shortDescription, location, metadata } = req.body;
+
+    if (!streamProviderId || typeof streamProviderId !== 'string') {
+      res.status(400).json({ error: 'Stream provider ID is required.' });
+      return;
+    }
+
+    if (!title || typeof title !== 'string' || title.trim().length < 1) {
+      res.status(400).json({ error: 'Tour title is required.' });
+      return;
+    }
+
+    const provider = await getStreamProvider(streamProviderId);
+    if (!provider) {
+      res.status(404).json({ error: 'Stream provider not found.' });
+      return;
+    }
+
+    const tour = await createLiveTour({
+      streamProviderId,
+      title: title.trim(),
+      shortDescription: (shortDescription || '').trim(),
+      hostName: hostData.name,
+      hostId: hostData.id,
+      location: (location || '').trim(),
+      status: 'draft',
+      metadata: metadata || {},
+    });
+
+    res.status(201).json(jsonOk(tour));
+  } catch (error) {
+    console.error('Error creating host tour:', error);
+    res.status(500).json({ error: 'Failed to create tour.' });
+  }
+});
+
+app.get('/host/streams', requireHostPasscode, requireFirebaseMiddleware, async (_req: express.Request, res) => {
+  try {
+    const providers = await getStreamProviders();
+    res.json(jsonOk(providers));
+  } catch (error) {
+    console.error('Error fetching stream providers for host:', error);
+    res.status(500).json({ error: 'Failed to fetch stream providers.' });
+  }
+});
+
+app.put('/host/tours/:id', requireHostPasscode, requireFirebaseMiddleware, async (req: express.Request, res) => {
+  try {
+    const hostData = (req as any).hostData;
+    const { id } = req.params;
+    const { title, shortDescription, location, status, metadata } = req.body;
+
+    const existing = await getLiveTour(id);
+    if (!existing || existing.hostId !== hostData.id) {
+      res.status(403).json({ error: 'You can only manage your own tours.' });
+      return;
+    }
+
+    const updates: Partial<LiveTour> = {};
+    if (title) updates.title = title.trim();
+    if (shortDescription !== undefined) updates.shortDescription = (shortDescription || '').trim();
+    if (location !== undefined) updates.location = (location || '').trim();
+    if (status) {
+      if (!['draft', 'scheduled', 'live', 'ended'].includes(status)) {
+        res.status(400).json({ error: 'Invalid tour status.' });
+        return;
+      }
+      updates.status = status;
+    }
+    if (metadata) updates.metadata = metadata;
+
+    await updateLiveTour(id, updates);
+
+    if (status) {
+      void writeOperationLog({
+        userId: hostData.id,
+        action: status === 'live' ? 'tour_go_live' : status === 'ended' ? 'tour_end' : 'tour_update',
+        resourceType: 'live_tour',
+        resourceId: id,
+        changes: updates,
+        status: 'success',
+      });
+    }
+
+    res.json(jsonOk({ ok: true }));
+  } catch (error) {
+    console.error('Error updating host tour:', error);
+    res.status(500).json({ error: 'Failed to update tour.' });
+  }
+});
+
+app.delete('/host/tours/:id', requireHostPasscode, requireFirebaseMiddleware, async (req: express.Request, res) => {
+  try {
+    const hostData = (req as any).hostData;
+    const { id } = req.params;
+
+    const existing = await getLiveTour(id);
+    if (!existing || existing.hostId !== hostData.id) {
+      res.status(403).json({ error: 'You can only manage your own tours.' });
+      return;
+    }
+
+    const db = getRealtimeDB();
+    await db.ref(COLLECTIONS.live_tours).child(id).remove();
+    res.json(jsonOk({ ok: true }));
+  } catch (error) {
+    console.error('Error deleting host tour:', error);
+    res.status(500).json({ error: 'Failed to delete tour.' });
   }
 });
 
