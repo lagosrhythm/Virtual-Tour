@@ -32,6 +32,7 @@ import {
   createHost,
   getHostByEmail,
   getHosts,
+  updateHost,
 } from '../src/server/db/services';
 import type { StreamProvider, LiveTour, HostApplication } from '../src/server/db/types';
 
@@ -629,6 +630,37 @@ app.delete('/admin/tour-requests/:id', requireAdminPasscode, requireFirebaseMidd
   } catch (error) {
     console.error('Error deleting tour request:', error);
     res.status(500).json({ error: 'Failed to delete tour request' });
+  }
+});
+
+// ============ Host Dashboard Endpoints ============
+
+app.get('/host/my-tours', requireHostPasscode, requireFirebaseMiddleware, async (req: express.Request, res) => {
+  try {
+    const hostData = (req as any).hostData;
+    const tours = await getLiveTourHistory(100);
+    const myTours = tours.filter(
+      (t: any) => t.hostId === hostData.id || t.hostName === hostData.name || t.hostName === hostData.email,
+    );
+    res.json(jsonOk(myTours));
+  } catch (error) {
+    console.error('Error fetching host tours:', error);
+    res.status(500).json({ error: 'Failed to fetch tours.' });
+  }
+});
+
+app.put('/host/profile', requireHostPasscode, requireFirebaseMiddleware, async (req: express.Request, res) => {
+  try {
+    const hostData = (req as any).hostData;
+    const { bio, profileImage } = req.body;
+    const updates: Record<string, string> = {};
+    if (bio !== undefined) updates.bio = sanitise(bio, 1000);
+    if (profileImage !== undefined) updates.profileImage = sanitise(profileImage, 500);
+    await updateHost(hostData.id, updates);
+    res.json(jsonOk({ ok: true }));
+  } catch (error) {
+    console.error('Error updating host profile:', error);
+    res.status(500).json({ error: 'Failed to update profile.' });
   }
 });
 

@@ -315,6 +315,25 @@ export async function getNewsletterSubscribers(passcode: string) {
   });
 }
 
+// ============ Host Dashboard API ============
+
+export async function hostGetMyTours(passcode: string) {
+  return request<ApiResult<LiveTourRecord[]>>('/host/my-tours', {
+    headers: { 'X-Host-Passcode': passcode },
+  });
+}
+
+export async function hostUpdateProfile(
+  passcode: string,
+  data: { bio?: string; profileImage?: string },
+) {
+  return request<ApiResult<{ ok: true }>>('/host/profile', {
+    method: 'PUT',
+    headers: { 'X-Host-Passcode': passcode },
+    body: JSON.stringify(data),
+  });
+}
+
 // ============ Public Catalog ============
 
 export interface CatalogTourApi {

@@ -1,5 +1,6 @@
 import { Globe, LogIn } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
+import { hostLogin } from '../../lib/api';
 import { useHostAuth } from './HostAuthContext';
 
 export default function HostLogin() {
@@ -14,19 +15,12 @@ export default function HostLogin() {
     setError('');
     setLoading(true);
     try {
-      if (!email.trim()) {
-        throw new Error('Please enter your email');
+      if (!email.trim() || !passcode.trim()) {
+        throw new Error('Email and passcode are required');
       }
-      if (!passcode.trim()) {
-        throw new Error('Please enter your passcode');
-      }
-
-      const success = await login(email.trim(), passcode.trim());
-      if (!success) {
-        throw new Error('Invalid email or passcode');
-      }
+      const result = await hostLogin(email.trim(), passcode.trim());
+      login(passcode.trim(), result.data);
     } catch (err) {
-      console.error('Host login failed:', err);
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setLoading(false);
@@ -37,7 +31,7 @@ export default function HostLogin() {
     <div className="min-h-screen bg-muted flex items-center justify-center px-4">
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl border border-border p-8 space-y-6">
         <div className="flex items-center gap-2">
-          <div className="size-8 rounded-full bg-coral flex items-center justify-center text-white">
+          <div className="size-8 rounded-full bg-teal flex items-center justify-center text-white">
             <Globe className="size-[18px]" />
           </div>
           <span className="font-bold text-lg text-dark">Lagos Rhythm</span>
@@ -53,7 +47,7 @@ export default function HostLogin() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-teal/50 transition-colors"
-              placeholder="Enter your email"
+              placeholder="your@email.com"
             />
           </div>
 
@@ -65,7 +59,7 @@ export default function HostLogin() {
               value={passcode}
               onChange={(e) => setPasscode(e.target.value)}
               className="w-full border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-teal/50 transition-colors"
-              placeholder="Enter host passcode"
+              placeholder="Enter your host passcode"
             />
           </div>
 
@@ -78,7 +72,7 @@ export default function HostLogin() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-coral text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-coral/90 transition-colors disabled:opacity-60"
+            className="w-full bg-teal text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-teal/90 transition-colors disabled:opacity-60"
           >
             <LogIn className="size-4" />
             {loading ? 'Signing in...' : 'Sign in'}

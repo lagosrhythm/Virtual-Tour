@@ -8,10 +8,12 @@ interface HostGoLiveProps {
   streamKey?: string;
   ingestUrl?: string;
   onEnd: () => void;
+  passcode?: string;
 }
 
-export default function HostGoLive({ tourId, streamKey, ingestUrl, onEnd }: HostGoLiveProps) {
-  const { passcode } = useAdminAuth();
+export default function HostGoLive({ tourId, streamKey, ingestUrl, onEnd, passcode: passcodeProp }: HostGoLiveProps) {
+  const { passcode: adminPasscode } = useAdminAuth();
+  const passcode = passcodeProp || adminPasscode;
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [videoEnabled, setVideoEnabled] = useState(true);
