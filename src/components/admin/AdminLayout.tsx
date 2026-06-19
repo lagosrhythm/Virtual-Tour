@@ -5,7 +5,7 @@ import { cn } from '../../lib/utils';
 import { useAdminAuth } from './AdminAuthContext';
 import AdminLogin from './AdminLogin';
 
-type AdminView = 'dashboard' | 'live' | 'providers' | 'recommended' | 'catalog' | 'requests' | 'newsletter' | 'host_stream';
+type AdminView = 'dashboard' | 'live' | 'providers' | 'recommended' | 'catalog' | 'requests' | 'newsletter' | 'host_stream' | 'applications' | 'hosts';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -20,6 +20,8 @@ const NAV_ITEMS: { id: AdminView; label: string; icon: typeof LayoutDashboard }[
   { id: 'recommended', label: 'Recommended Tours', icon: Star },
   { id: 'catalog', label: 'Catalog Tours', icon: BookOpen },
   { id: 'requests', label: 'Tour Requests', icon: Users },
+  { id: 'applications', label: 'Applications', icon: Users },
+  { id: 'hosts', label: 'Hosts', icon: Globe },
   { id: 'newsletter', label: 'Newsletter', icon: Mail },
 ];
 

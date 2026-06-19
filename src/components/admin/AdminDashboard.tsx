@@ -1,6 +1,8 @@
 import { type ReactElement, useState } from 'react';
 import { AdminAuthProvider } from './AdminAuthContext';
 import AdminLayout, { type AdminView } from './AdminLayout';
+import AdminApplications from './AdminApplications';
+import AdminHosts from './AdminHosts';
 import CatalogToursManager from './CatalogToursManager';
 import DashboardOverview from './DashboardOverview';
 import LiveControlPanel from './LiveControlPanel';
@@ -27,6 +29,8 @@ export default function AdminDashboard() {
     recommended: <RecommendedToursManager />,
     catalog: <CatalogToursManager />,
     requests: <TourRequestsQueue />,
+    applications: <AdminApplications />,
+    hosts: <AdminHosts />,
     newsletter: <NewsletterManager />,
     host_stream: activeStreamTour ? (
       <HostGoLive

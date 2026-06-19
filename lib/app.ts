@@ -762,6 +762,54 @@ app.post('/admin/host-applications/:id/reject', requireAdminPasscode, requireFir
   }
 });
 
+// ============ Admin Hosts Endpoints ============
+
+app.get('/admin/hosts', requireAdminPasscode, requireFirebaseMiddleware, async (_req: express.Request, res) => {
+  try {
+    const hosts = await getHosts();
+    const safeHosts = hosts.map(({ passcode: _, ...rest }) => rest);
+    res.json(jsonOk(safeHosts));
+  } catch (error) {
+    console.error('Error fetching hosts:', error);
+    res.status(500).json({ error: 'Failed to fetch hosts' });
+  }
+});
+
+app.put('/admin/hosts/:id', requireAdminPasscode, requireFirebaseMiddleware, async (req: express.Request, res) => {
+  try {
+    const { id } = req.params;
+    const { status, bio, profileImage } = req.body;
+
+    if (status && !['active', 'suspended'].includes(status)) {
+      res.status(400).json({ error: 'Invalid host status.' });
+      return;
+    }
+
+    const updates: Record<string, unknown> = {};
+    if (status) updates.status = status;
+    if (bio !== undefined) updates.bio = sanitise(bio, 1000);
+    if (profileImage !== undefined) updates.profileImage = sanitise(profileImage, 500);
+
+    await updateHost(id, updates);
+    res.json(jsonOk({ ok: true }));
+  } catch (error) {
+    console.error('Error updating host:', error);
+    res.status(500).json({ error: 'Failed to update host' });
+  }
+});
+
+app.delete('/admin/hosts/:id', requireAdminPasscode, requireFirebaseMiddleware, async (req: express.Request, res) => {
+  try {
+    const { id } = req.params;
+    const { deleteHost } = await import('../src/server/db/services');
+    await deleteHost(id);
+    res.json(jsonOk({ ok: true }));
+  } catch (error) {
+    console.error('Error deleting host:', error);
+    res.status(500).json({ error: 'Failed to delete host' });
+  }
+});
+
 // ============ Public API Endpoints ============
 
 app.get('/api/recommended-tours', async (_req, res) => {

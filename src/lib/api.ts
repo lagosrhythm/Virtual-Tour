@@ -147,8 +147,18 @@ export async function hostLogin(email: string, passcode: string) {
 
 // ============ Admin Host Applications ============
 
+export interface HostApplicationRecord {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  experience: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+}
+
 export async function adminGetHostApplications(passcode: string) {
-  return request<ApiResult<HostApplicationInput[] & { id: string; status: string }[]>>('/admin/host-applications', {
+  return request<ApiResult<HostApplicationRecord[]>>('/admin/host-applications', {
     headers: adminHeaders(passcode),
   });
 }
@@ -163,6 +173,42 @@ export async function adminApproveHostApplication(passcode: string, id: string) 
 export async function adminRejectHostApplication(passcode: string, id: string) {
   return request<ApiResult<{ ok: true }>>(`/admin/host-applications/${id}/reject`, {
     method: 'POST',
+    headers: adminHeaders(passcode),
+  });
+}
+
+// ============ Admin Hosts ============
+
+export interface AdminHostRecord {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  experience: string;
+  bio: string;
+  profileImage: string;
+  status: 'active' | 'suspended';
+  applicationId: string;
+  createdAt: string;
+}
+
+export async function adminGetHosts(passcode: string) {
+  return request<ApiResult<AdminHostRecord[]>>('/admin/hosts', {
+    headers: adminHeaders(passcode),
+  });
+}
+
+export async function adminUpdateHost(passcode: string, id: string, data: Partial<Pick<AdminHostRecord, 'status' | 'bio' | 'profileImage'>>) {
+  return request<ApiResult<{ ok: true }>>(`/admin/hosts/${id}`, {
+    method: 'PUT',
+    headers: adminHeaders(passcode),
+    body: JSON.stringify(data),
+  });
+}
+
+export async function adminDeleteHost(passcode: string, id: string) {
+  return request<ApiResult<{ ok: true }>>(`/admin/hosts/${id}`, {
+    method: 'DELETE',
     headers: adminHeaders(passcode),
   });
 }
