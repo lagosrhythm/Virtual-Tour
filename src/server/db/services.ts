@@ -6,6 +6,7 @@ import type {
   RecommendedTour,
   CatalogTour,
   StreamProvider,
+  HostApplication,
 } from './types';
 
 // Utility to convert RTDB object to array
@@ -115,6 +116,37 @@ export async function updateTourRequestStatus(
     status,
     updatedAt: new Date().toISOString(),
   });
+}
+
+// ============ Host Applications ============
+
+export async function createHostApplication(
+  name: string,
+  email: string,
+  phone: string,
+  experience: string,
+): Promise<HostApplication> {
+  const db = getRealtimeDB();
+  const ref = db.ref(COLLECTIONS.host_applications).push();
+  const now = new Date();
+
+  const application: HostApplication = {
+    id: ref.key!,
+    name,
+    email,
+    phone,
+    experience,
+    status: 'pending',
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await ref.set({
+    ...application,
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+  });
+  return application;
 }
 
 // ============ Newsletter Subscribers ============

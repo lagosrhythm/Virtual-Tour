@@ -25,6 +25,7 @@ import {
   getOperationLogs,
   writeViewerSnapshot,
   getAnalyticsSummary,
+  createHostApplication,
 } from '../src/server/db/services';
 import type { StreamProvider, LiveTour } from '../src/server/db/types';
 
@@ -673,6 +674,46 @@ app.post('/api/newsletter', publicFormLimiter, async (req, res) => {
   } catch (error) {
     console.error('Error adding newsletter subscriber:', error);
     res.status(500).json({ error: 'Failed to subscribe' });
+  }
+});
+
+app.post('/api/host-applications', publicFormLimiter, async (req, res) => {
+  try {
+    const name = sanitise(req.body?.name, 100);
+    const email = sanitise(req.body?.email, 254).toLowerCase();
+    const phone = sanitise(req.body?.phone, 30);
+    const experience = sanitise(req.body?.experience, 500);
+
+    if (name.length < 2) {
+      res.status(400).json({ error: 'Enter your full name (at least 2 characters).' });
+      return;
+    }
+
+    if (!isEmail(email)) {
+      res.status(400).json({ error: 'Enter a valid email address.' });
+      return;
+    }
+
+    if (phone.length < 5) {
+      res.status(400).json({ error: 'Enter a valid phone number (at least 5 characters).' });
+      return;
+    }
+
+    if (!experience) {
+      res.status(400).json({ error: 'Please describe your experience.' });
+      return;
+    }
+
+    try {
+      await createHostApplication(name, email, phone, experience);
+    } catch (error) {
+      console.warn('Could not save to Firestore:', error instanceof Error ? error.message : error);
+    }
+
+    res.status(201).json(jsonOk({ ok: true }));
+  } catch (error) {
+    console.error('Error creating host application:', error);
+    res.status(500).json({ error: 'Failed to process request' });
   }
 });
 

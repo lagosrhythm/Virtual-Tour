@@ -107,6 +107,17 @@ export interface OperationLog {
   timestamp: Date;
 }
 
+export interface HostApplication {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  experience: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface ViewerSnapshot {
   id: string;
   tourId: string;

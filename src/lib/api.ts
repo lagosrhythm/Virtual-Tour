@@ -109,6 +109,20 @@ export async function subscribeToNewsletter(input: NewsletterInput) {
   });
 }
 
+export interface HostApplicationInput {
+  name: string;
+  email: string;
+  phone: string;
+  experience: string;
+}
+
+export async function submitHostApplication(input: HostApplicationInput) {
+  return request<ApiResult<{ ok: true }>>('/api/host-applications', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
 // ============ Admin Stream Providers ============
 
 export interface StreamProvider {

@@ -7,11 +7,12 @@ interface NavbarProps {
   onLiveClick: () => void;
   onCatalogClick: () => void;
   onRequestTour: () => void;
+  onBecomeHost: () => void;
   isLive: boolean;
   liveTourTitle?: string;
 }
 
-export default function Navbar({ onLogoClick, onLiveClick, onCatalogClick, onRequestTour, isLive, liveTourTitle }: NavbarProps) {
+export default function Navbar({ onLogoClick, onLiveClick, onCatalogClick, onRequestTour, onBecomeHost, isLive, liveTourTitle }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleNavClick = (action: () => void) => {
@@ -47,6 +48,9 @@ export default function Navbar({ onLogoClick, onLiveClick, onCatalogClick, onReq
           </button>
           <button onClick={onRequestTour} className="hover:text-coral transition-colors">
             Request a tour
+          </button>
+          <button onClick={onBecomeHost} className="hover:text-coral transition-colors">
+            Become a Host
           </button>
           <a href="#catalog" onClick={onCatalogClick} className="hover:text-coral transition-colors">
             Catalog
@@ -118,6 +122,12 @@ export default function Navbar({ onLogoClick, onLiveClick, onCatalogClick, onReq
                   className="w-full text-left px-4 py-3 rounded-xl text-sm font-semibold text-dark hover:bg-muted transition-colors"
                 >
                   Catalog
+                </button>
+                <button
+                  onClick={() => handleNavClick(onBecomeHost)}
+                  className="w-full text-left px-4 py-3 rounded-xl text-sm font-semibold text-dark hover:bg-muted transition-colors"
+                >
+                  Become a Host
                 </button>
                 <div className="pt-4 border-t border-border">
                   <a

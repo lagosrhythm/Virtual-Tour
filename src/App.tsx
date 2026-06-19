@@ -8,6 +8,7 @@ import Catalog from './components/Catalog';
 import Footer from './components/Footer';
 import WelcomeModal from './components/WelcomeModal';
 import RequestTourModal from './components/RequestTourModal';
+import BecomeHostModal from './components/BecomeHostModal';
 import AdminDashboard from './components/admin/AdminDashboard';
 import { useTourStatus } from './hooks/useTourStatus';
 import { cn } from './lib/utils';
@@ -16,6 +17,7 @@ const isAdminRoute = window.location.pathname.startsWith('/admin');
 
 export default function App() {
   const [isRequestTourOpen, setIsRequestTourOpen] = useState(false);
+  const [isBecomeHostOpen, setIsBecomeHostOpen] = useState(false);
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
   const [currentView, setCurrentView] = useState<'home' | 'live'>('home');
   const tourStatus = useTourStatus();
@@ -54,6 +56,7 @@ export default function App() {
         onLiveClick={() => navigateTo('live')}
         onCatalogClick={navigateToCatalog}
         onRequestTour={() => setIsRequestTourOpen(true)}
+        onBecomeHost={() => setIsBecomeHostOpen(true)}
         isLive={tourStatus.isLive}
         liveTourTitle={tourStatus.tour?.title}
       />
@@ -78,6 +81,11 @@ export default function App() {
       <RequestTourModal
         isOpen={isRequestTourOpen}
         onClose={() => setIsRequestTourOpen(false)}
+      />
+
+      <BecomeHostModal
+        isOpen={isBecomeHostOpen}
+        onClose={() => setIsBecomeHostOpen(false)}
       />
 
       <WelcomeModal

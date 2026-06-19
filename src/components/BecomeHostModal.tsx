@@ -1,6 +1,7 @@
-import { X, Globe, User, Phone, CheckCircle2, ChevronRight } from 'lucide-react';
+import { X, Globe, User, Phone, CheckCircle2, ChevronRight, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useState } from 'react';
+import { useState, useEffect, type ChangeEvent } from 'react';
+import { submitHostApplication } from '../lib/api';
 
 interface BecomeHostModalProps {
   isOpen: boolean;
@@ -14,11 +15,62 @@ export default function BecomeHostModal({ isOpen, onClose }: BecomeHostModalProp
     lastName: '',
     email: '',
     phone: '',
-    experience: 'Beginner',
-    location: 'Lagos'
+    experience: '',
   });
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!isOpen) {
+      setStep(1);
+      setFormData({ firstName: '', lastName: '', email: '', phone: '', experience: '' });
+      setStatus('idle');
+      setError('');
+    }
+  }, [isOpen]);
+
+  const handleChange = (field: string) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData(prev => ({ ...prev, [field]: e.target.value }));
+    if (error) setError('');
+  };
 
   const nextStep = () => setStep(s => s + 1);
+
+  const handleSubmit = async () => {
+    const fullName = `${formData.firstName} ${formData.lastName}`.trim();
+    if (fullName.length < 2) {
+      setError('Enter your full name (at least 2 characters).');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      setError('Enter a valid email address.');
+      return;
+    }
+    if (formData.phone.length < 5) {
+      setError('Enter a valid phone number.');
+      return;
+    }
+    if (!formData.experience) {
+      setError('Please describe your experience.');
+      return;
+    }
+
+    setStatus('submitting');
+    setError('');
+    try {
+      await submitHostApplication({
+        name: fullName,
+        email: formData.email,
+        phone: formData.phone,
+        experience: formData.experience,
+      });
+      setStatus('success');
+      setStep(3);
+    } catch (err) {
+      setStatus('idle');
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -101,6 +153,8 @@ export default function BecomeHostModal({ isOpen, onClose }: BecomeHostModalProp
                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                            <input 
                             type="text" 
+                            value={formData.firstName}
+                            onChange={handleChange('firstName')}
                             className="w-full bg-gray-50 border border-gray-100 rounded-xl pl-10 pr-4 py-3 text-sm focus:bg-white focus:border-teal outline-none transition-all"
                             placeholder="John" 
                           />
@@ -110,6 +164,8 @@ export default function BecomeHostModal({ isOpen, onClose }: BecomeHostModalProp
                         <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Last Name</label>
                         <input 
                           type="text" 
+                          value={formData.lastName}
+                          onChange={handleChange('lastName')}
                           className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-teal outline-none transition-all" 
                           placeholder="Doe"
                         />
@@ -121,11 +177,17 @@ export default function BecomeHostModal({ isOpen, onClose }: BecomeHostModalProp
                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input 
                           type="tel" 
+                          value={formData.phone}
+                          onChange={handleChange('phone')}
                           className="w-full bg-gray-50 border border-gray-100 rounded-xl pl-10 pr-4 py-3 text-sm focus:bg-white focus:border-teal outline-none transition-all"
                           placeholder="+234 800 000 0000" 
                         />
                       </div>
                     </div>
+
+                    {error && (
+                      <p className="text-xs text-red-500 font-medium">{error}</p>
+                    )}
                     
                     <button 
                       onClick={nextStep}
@@ -140,20 +202,47 @@ export default function BecomeHostModal({ isOpen, onClose }: BecomeHostModalProp
                 {step === 2 && (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
                     <h4 className="text-xl font-bold font-display">Tell us about your experience.</h4>
-                    <div className="space-y-3">
-                      {['I am a certified tour guide', 'I am a local enthusiast', 'I am an expert in history/culture'].map(opt => (
-                        <button key={opt} className="w-full p-4 text-left border border-gray-100 rounded-xl hover:border-teal hover:bg-teal/[0.02] flex items-center justify-between group transition-all">
-                          <span className="text-sm font-medium text-gray-600 group-hover:text-teal">{opt}</span>
-                          <div className="w-4 h-4 rounded-full border-2 border-gray-200 group-hover:border-teal" />
-                        </button>
-                      ))}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email</label>
+                      <input 
+                        type="email"
+                        value={formData.email}
+                        onChange={handleChange('email')}
+                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-teal outline-none transition-all"
+                        placeholder="you@example.com"
+                      />
                     </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Your Experience</label>
+                      <textarea
+                        value={formData.experience}
+                        onChange={handleChange('experience')}
+                        rows={4}
+                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:bg-white focus:border-teal outline-none transition-all resize-none"
+                        placeholder="Tell us about your hosting or tour guiding experience..."
+                      />
+                    </div>
+
+                    {error && (
+                      <p className="text-xs text-red-500 font-medium">{error}</p>
+                    )}
+
                     <button 
-                      onClick={nextStep}
-                      className="w-full bg-dark text-white py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-neutral-800 transition-colors"
+                      onClick={handleSubmit}
+                      disabled={status === 'submitting'}
+                      className="w-full bg-dark text-white py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Continue
-                      <ChevronRight className="w-4 h-4" />
+                      {status === 'submitting' ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : (
+                        <>
+                          Submit Application
+                          <ChevronRight className="w-4 h-4" />
+                        </>
+                      )}
                     </button>
                   </motion.div>
                 )}
