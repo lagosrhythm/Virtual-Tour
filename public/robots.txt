@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /host
+Disallow: /api
+
+Sitemap: https://virtual-tour-5ac7.onrender.com/sitemap.xml
